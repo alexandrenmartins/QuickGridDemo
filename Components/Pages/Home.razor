@@ -5,9 +5,13 @@
 
 <PageTitle>Home - Cars</PageTitle>
 
-<QuickGrid Items="cars" Class="table table-bordered table-hover" Pagination="paginationState">
+<QuickGrid Items="filteredCars" Class="table table-bordered table-hover" Pagination="paginationState">
     <PropertyColumn Property="@(x => x.Id)" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Model)" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Model)" Sortable="true">
+        <ColumnOptions>
+            <input type="search" class="form-control" @bind="modelFilter" @bind:event="oninput" placeholder="Filter by model..." autofocus />
+        </ColumnOptions>
+    </PropertyColumn>
     <PropertyColumn Property="@(x => x.Manufacturer)"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)"></PropertyColumn>
 </QuickGrid>
@@ -32,4 +36,6 @@
 
     }.AsQueryable();
     PaginationState paginationState = new PaginationState { ItemsPerPage = 5 };
+    string modelFilter = string.Empty;
+    IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
 }

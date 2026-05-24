@@ -1,4 +1,6 @@
-using QuickGridDemo.Components;
+﻿using QuickGridDemo.Components;
+using QuickGridDemo.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace QuickGridDemo
 {
@@ -11,6 +13,10 @@ namespace QuickGridDemo
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+            builder.Services.AddQuickGridEntityFrameworkAdapter();
+
+            builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+            builder.Services.AddDbContextFactory<ApplicationDbContext>();
 
             var app = builder.Build();
 
@@ -20,6 +26,7 @@ namespace QuickGridDemo
                 app.UseExceptionHandler("/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
+    app.UseMigrationsEndPoint();
             }
 
             app.UseHttpsRedirection();

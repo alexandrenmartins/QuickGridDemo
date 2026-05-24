@@ -1,0 +1,50 @@
+﻿@page "/suppliers"﻿
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using QuickGridDemo.Data
+@using QuickGridDemo.Models
+
+@implements IAsyncDisposable
+
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+
+<h3>Suppliers</h3>
+
+<QuickGrid Items="filteredSuppliers" Pagination="pagination" Class="table table-bordered table-hover">
+    <PropertyColumn Property="@(x => x.SupplierID)" Title="ID" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.CompanyName)" Title="Company Name" Sortable="true">
+        <ColumnOptions>
+            <input type="search" @bind="companyNameFilter" @bind:event="oninput" class="form-control"/>
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="@(x => x.ContactName)" Title="Contact Name">
+        <ColumnOptions>
+            <input type="search" @bind="contactNameFilter" @bind:event="oninput" class="form-control" />
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="@(x => x.ContactTitle)" Title="Contact Title"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Address)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.City)" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Region)"></PropertyColumn>
+</QuickGrid>
+<Paginator State="pagination"></Paginator>
+
+@code {
+    private ApplicationDbContext dbContext = default!;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+    private string companyNameFilter = string.Empty, contactNameFilter = string.Empty;
+
+    private IQueryable<Supplier>? filteredSuppliers => dbContext.Suppliers.Where(s => s.CompanyName.ToLower().Contains(companyNameFilter) &&
+        s.ContactName.ToLower().Contains(contactNameFilter));
+
+    protected override void OnInitialized()
+    {
+        dbContext = DbContextFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await dbContext.DisposeAsync();
+    }
+}

@@ -1,0 +1,134 @@
+﻿@page "/customers/edit"
+@using Microsoft.EntityFrameworkCore
+@using QuickGridDemo.Models
+@inject IDbContextFactory<QuickGridDemo.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>Customer</h2>
+<hr />
+@if (Customer is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Customer" OnValidSubmit="UpdateCustomer" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Customer.CustomerID" value="@Customer.CustomerID" />
+                <div class="mb-3">
+                    <label for="companyname" class="form-label">CompanyName:</label>
+                    <InputText id="companyname" @bind-Value="Customer.CompanyName" class="form-control" />
+                    <ValidationMessage For="() => Customer.CompanyName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="contactname" class="form-label">ContactName:</label>
+                    <InputText id="contactname" @bind-Value="Customer.ContactName" class="form-control" />
+                    <ValidationMessage For="() => Customer.ContactName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="contacttitle" class="form-label">ContactTitle:</label>
+                    <InputText id="contacttitle" @bind-Value="Customer.ContactTitle" class="form-control" />
+                    <ValidationMessage For="() => Customer.ContactTitle" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="address" class="form-label">Address:</label>
+                    <InputText id="address" @bind-Value="Customer.Address" class="form-control" />
+                    <ValidationMessage For="() => Customer.Address" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="city" class="form-label">City:</label>
+                    <InputText id="city" @bind-Value="Customer.City" class="form-control" />
+                    <ValidationMessage For="() => Customer.City" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="region" class="form-label">Region:</label>
+                    <InputText id="region" @bind-Value="Customer.Region" class="form-control" />
+                    <ValidationMessage For="() => Customer.Region" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="postalcode" class="form-label">PostalCode:</label>
+                    <InputText id="postalcode" @bind-Value="Customer.PostalCode" class="form-control" />
+                    <ValidationMessage For="() => Customer.PostalCode" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="country" class="form-label">Country:</label>
+                    <InputText id="country" @bind-Value="Customer.Country" class="form-control" />
+                    <ValidationMessage For="() => Customer.Country" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Phone:</label>
+                    <InputText id="phone" @bind-Value="Customer.Phone" class="form-control" />
+                    <ValidationMessage For="() => Customer.Phone" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="fax" class="form-label">Fax:</label>
+                    <InputText id="fax" @bind-Value="Customer.Fax" class="form-control" />
+                    <ValidationMessage For="() => Customer.Fax" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/customers">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string CustomerID { get; set; }
+
+    [SupplyParameterFromForm]
+    private Customer? Customer { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Customer ??= await context.Customers.FirstOrDefaultAsync(m => m.CustomerID == CustomerID);
+
+        if (Customer is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateCustomer()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Customer!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CustomerExists(Customer!.CustomerID))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/customers");
+    }
+
+    private bool CustomerExists(string customerid)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Customers.Any(e => e.CustomerID == customerid);
+    }
+}
