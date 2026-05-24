@@ -1,0 +1,35 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using QuickGridDemo.Models
+
+<PageTitle>Home - Cars</PageTitle>
+
+<QuickGrid Items="cars" Class="table table-bordered table-hover" Pagination="paginationState">
+    <PropertyColumn Property="@(x => x.Id)" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Model)" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Manufacturer)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Year)"></PropertyColumn>
+</QuickGrid>
+<Paginator State="paginationState"></Paginator>
+
+@code {
+
+    IQueryable<Car> cars => new List<Car> {
+        new Car { Id = 1, Manufacturer = "Toyota", Model = "Camry", Year = "2020" },
+        new Car { Id = 2, Manufacturer = "Honda", Model = "Civic", Year = "2019" },
+        new Car { Id = 3, Manufacturer = "Ford", Model = "Mustang", Year = "2021" },
+        new Car { Id = 4, Manufacturer = "Chevrolet", Model = "Impala", Year = "2018" },
+        new Car { Id = 5, Manufacturer = "Tesla", Model = "Model 3", Year = "2022" },
+        new Car { Id = 6, Manufacturer = "Mercury", Model = "Cougar", Year = "1992"},
+        new Car { Id = 7, Manufacturer = "BMW", Model = "X5", Year = "2021" },
+        new Car { Id = 8, Manufacturer = "Audi", Model = "A4", Year = "2020" },
+        new Car { Id = 9, Manufacturer = "Volkswagen", Model = "Golf", Year = "2019" },
+        new Car { Id = 10, Manufacturer = "Hyundai", Model = "Elantra", Year = "2022" },
+        new Car { Id = 11, Manufacturer = "Kia", Model = "Sorento", Year = "2021" },
+        new Car { Id = 12, Manufacturer = "Nissan", Model = "Altima", Year = "2018" }
+
+
+    }.AsQueryable();
+    PaginationState paginationState = new PaginationState { ItemsPerPage = 5 };
+}
