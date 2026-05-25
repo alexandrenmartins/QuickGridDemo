@@ -1,0 +1,48 @@
+﻿@page "/books"
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using QuickGridDemo.Models
+
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<h3>Books</h3>
+
+<QuickGrid ItemsProvider="@gridItemsProvider" Virtualize="true" Class="table table-bordered table-hover" Pagination="paginationState">
+    <PropertyColumn Property="@(x => x.Title)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.First_Publish_Year)" Title="Year"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.LanguageList)" Title="Language"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.AuthorsList)" Title="Author(s)"></PropertyColumn>
+</QuickGrid>
+<Paginator State="paginationState"></Paginator>
+
+@code {
+    private GridItemsProvider<Book>? gridItemsProvider;
+
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = 10 };
+
+    protected override void OnInitialized()
+    {
+        gridItemsProvider = async req =>
+        {
+            var url = Navigation.GetUriWithQueryParameters(
+                "https://openlibrary.org/search.json",
+                new Dictionary<string, object?>
+                {
+                    {"page", req.StartIndex + 1},
+                    {"limit", req.Count},
+                    {"title", "the sun"}
+                }
+            );
+
+            try
+            {
+                using var response = await Http.GetFromJsonAsync<BookQueryResult>(url, req.CancellationToken);
+                return GridItemsProviderResult.From(response.Docs, response.NumFound);
+            }
+            catch (Exception exc) { }
+
+            return GridItemsProviderResult.From(new List<Book>(), 0);
+        };
+    }
+}

@@ -17,6 +17,7 @@ namespace QuickGridDemo
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
             builder.Services.AddDbContextFactory<ApplicationDbContext>();
+            builder.Services.AddHttpClient();
 
             var app = builder.Build();
 

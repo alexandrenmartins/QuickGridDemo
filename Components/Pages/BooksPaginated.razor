@@ -1,0 +1,63 @@
+﻿@page "/books-paginated"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using QuickGridDemo.Models
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<h3>Books</h3>
+<div>
+    <div class="input-group">
+        <input @bind="titleFilter" type="text" class="form-control" placeholder="Title..." aria-label="Title..." aria-describedby="button-addon2">
+        <button class="btn btn-outline-secondary" type="button" id="button-addon2" @onclick="FilterBooks">Find</button>
+    </div>
+</div>
+<QuickGrid ItemsProvider="@gridItemsProvider" Virtualize="true" Pagination="paginationState" Class="table table-bordered table-hover">
+    <PropertyColumn Property="@(x => x.Title)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.First_Publish_Year)" Title="Year"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.LanguageList)" Title="Language"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.AuthorsList)" Title="Author(s)"></PropertyColumn>
+</QuickGrid>
+<Paginator State="paginationState"></Paginator>
+
+@code {
+    private GridItemsProvider<Book>? gridItemsProvider;
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = 10 };
+    private string titleFilter = "the sun";
+
+    protected override void OnInitialized()
+    {
+        LoadBooks();
+    }
+
+    private void LoadBooks()
+    {
+        gridItemsProvider = async req =>
+        {
+            var parameters = new Dictionary<string, object?>
+                {
+                    {"page", req.StartIndex + 1},
+                    {"limit", req.Count},
+                    {"title", titleFilter}
+                };
+                        
+            var url = Navigation.GetUriWithQueryParameters(
+                "https://openlibrary.org/search.json",
+                parameters
+            );
+
+            try
+            {
+                using var response = await Http.GetFromJsonAsync<BookQueryResult>(url, req.CancellationToken);
+                return GridItemsProviderResult.From(response.Docs, response.NumFound);
+            }
+            catch (Exception exc) { }
+
+            return GridItemsProviderResult.From(new List<Book>(), 0);
+        };
+    }
+
+    private void FilterBooks()
+    {
+        LoadBooks();   
+    }
+}

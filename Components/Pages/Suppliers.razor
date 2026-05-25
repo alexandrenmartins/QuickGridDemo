@@ -9,18 +9,20 @@
 
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
+<PageTitle>QuickGridDemo - Suppliers</PageTitle>
+
 <h3>Suppliers</h3>
 
 <QuickGrid Items="filteredSuppliers" Pagination="pagination" Class="table table-bordered table-hover">
     <PropertyColumn Property="@(x => x.SupplierID)" Title="ID" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.CompanyName)" Title="Company Name" Sortable="true">
         <ColumnOptions>
-            <input type="search" @bind="companyNameFilter" @bind:event="oninput" class="form-control"/>
+            <input type="search" @bind="companyNameFilter" @bind:event="oninput" class="form-control" placeholder="Company Name..." />
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.ContactName)" Title="Contact Name">
         <ColumnOptions>
-            <input type="search" @bind="contactNameFilter" @bind:event="oninput" class="form-control" />
+            <input type="search" @bind="contactNameFilter" @bind:event="oninput" class="form-control" placeholder="Contact Name..." />
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.ContactTitle)" Title="Contact Title"></PropertyColumn>
@@ -33,8 +35,11 @@
 @code {
     private ApplicationDbContext dbContext = default!;
     private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+    // Variaveis para os campos dos filtros
     private string companyNameFilter = string.Empty, contactNameFilter = string.Empty;
 
+    // Filtro para as colunas CompanyName e ContactName
     private IQueryable<Supplier>? filteredSuppliers => dbContext.Suppliers.Where(s => s.CompanyName.ToLower().Contains(companyNameFilter) &&
         s.ContactName.ToLower().Contains(contactNameFilter));
 
