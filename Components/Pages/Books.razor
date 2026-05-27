@@ -6,7 +6,10 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 
-<h3>Books</h3>
+<PageTitle>QuickGridDemo - Books from HTTP Api</PageTitle>
+
+<h3>Books from HTTP Api</h3>
+<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 
 <QuickGrid ItemsProvider="@gridItemsProvider" Virtualize="true" Class="table table-bordered table-hover" Pagination="paginationState">
     <PropertyColumn Property="@(x => x.Title)"></PropertyColumn>
@@ -17,9 +20,12 @@
 <Paginator State="paginationState"></Paginator>
 
 @code {
+
+    private const int QTD_ITENS_PER_PAGE = 10;
+
     private GridItemsProvider<Book>? gridItemsProvider;
 
-    private PaginationState paginationState = new PaginationState { ItemsPerPage = 10 };
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     protected override void OnInitialized()
     {

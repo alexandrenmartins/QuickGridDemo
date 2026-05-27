@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     //protected override void OnConfiguring(DbContextOptionsBuilder options) => options.UseSqlite($"Data Source={DbPath}");
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        //Using SQLite for simplicity, but you can use any database provider you like
         optionsBuilder.UseSqlite($"Data Source={DbPath}");
     }
 

@@ -3,7 +3,10 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using QuickGridDemo.Models
 
-<PageTitle>Home - Cars</PageTitle>
+<PageTitle>Home - Cars form a List object</PageTitle>
+
+<h3>Cars form a List object</h3>
+<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 
 <QuickGrid Items="filteredCars" Class="table table-bordered table-hover" Pagination="paginationState">
     <PropertyColumn Property="@(x => x.Id)" Sortable="true"></PropertyColumn>
@@ -18,6 +21,8 @@
 <Paginator State="paginationState"></Paginator>
 
 @code {
+
+    private const int QTD_ITENS_PER_PAGE = 5;
 
     IQueryable<Car> cars => new List<Car> {
         new Car { Id = 1, Manufacturer = "Toyota", Model = "Camry", Year = "2020" },
@@ -35,7 +40,7 @@
 
 
     }.AsQueryable();
-    PaginationState paginationState = new PaginationState { ItemsPerPage = 5 };
+    PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
     string modelFilter = string.Empty;
     IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
 }

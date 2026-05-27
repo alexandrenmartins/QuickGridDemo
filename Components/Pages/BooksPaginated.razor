@@ -4,7 +4,11 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 
-<h3>Books</h3>
+<PageTitle>QuickGridDemo - Books from HTTP Api - paginated</PageTitle>
+
+<h3>Books from HTTP Api - paginated</h3>
+<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+
 <div>
     <div class="input-group">
         <input @bind="titleFilter" type="text" class="form-control" placeholder="Title..." aria-label="Title..." aria-describedby="button-addon2">
@@ -20,8 +24,11 @@
 <Paginator State="paginationState"></Paginator>
 
 @code {
+
+    private const int QTD_ITENS_PER_PAGE = 10;
+
     private GridItemsProvider<Book>? gridItemsProvider;
-    private PaginationState paginationState = new PaginationState { ItemsPerPage = 10 };
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
     private string titleFilter = "the sun";
 
     protected override void OnInitialized()

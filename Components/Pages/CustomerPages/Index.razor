@@ -6,9 +6,10 @@
 @implements IAsyncDisposable
 @inject IDbContextFactory<QuickGridDemo.Data.ApplicationDbContext> DbFactory
 
-<PageTitle>QuickGridDemo - Customers</PageTitle>
+<PageTitle>QuickGridDemo - Customers from SQLite Database</PageTitle>
 
-<h1>Customers</h1>
+<h1>Customers from SQLite Database</h1>
+<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 
 <p>
     <a href="customers/create">Create New</a>
@@ -35,8 +36,11 @@
 <Paginator State="paginationState"></Paginator>
 
 @code {
+
+    private const int QTD_ITENS_PER_PAGE = 12;
+
     private ApplicationDbContext context = default!;
-    private PaginationState paginationState = new PaginationState { ItemsPerPage = 10 };
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     protected override void OnInitialized()
     {

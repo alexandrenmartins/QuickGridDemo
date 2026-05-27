@@ -2,6 +2,7 @@
 using QuickGridDemo.Data;
 using Microsoft.EntityFrameworkCore;
 
+//Example from Code Skwela
 namespace QuickGridDemo
 {
     public class Program
