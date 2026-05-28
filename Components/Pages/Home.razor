@@ -18,16 +18,46 @@
     <PropertyColumn Property="@(x => x.Manufacturer)"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)"></PropertyColumn>
 </QuickGrid>
-<Paginator State="paginationState">
+@* <Paginator State="paginationState">
     <SummaryTemplate>
         <span>@paginationState.TotalItemCount itens</span>
-    </SummaryTemplate>
-    
-</Paginator>
+    </SummaryTemplate> 
+</Paginator> *@
+
+<!-- Paginador customizado - INÍCIO -->
+<div class="d-flex justify-content-between align-items-center mt-2">
+    <div>
+        <b>@paginationState.TotalItemCount</b> itens
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-sm btn-outline-primary" @onclick="PrimeiraPagina" disabled="@(!PodeVoltar)">Primeira</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="PaginaAnterior" disabled="@(!PodeVoltar)">Anterior</button>
+        &nbsp;Pág. @PaginaAtual de @TotalPaginas&nbsp;
+        <button class="btn btn-sm btn-outline-primary" @onclick="ProximaPagina" disabled="@(!PodeAvancar)">Próxima</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="UltimaPagina" disabled="@(!PodeAvancar)">Última</button>
+    </div>
+</div>
+<!-- Paginador customizado - FIM -->
 
 @code {
 
     private const int QTD_ITENS_PER_PAGE = 5;
+
+    // Paginador customizado
+    #region PAGINADOR CUSTOMIZADO
+    int PaginaAtual => paginationState.CurrentPageIndex + 1;
+    int carsCount => cars.Count();
+    int TotalPaginas => (int)Math.Ceiling((double)carsCount / QTD_ITENS_PER_PAGE);
+
+    bool PodeVoltar => paginationState.CurrentPageIndex > 0;
+    bool PodeAvancar => paginationState.CurrentPageIndex < TotalPaginas - 1;
+
+    void PrimeiraPagina() => paginationState.SetCurrentPageIndexAsync(0);
+    void PaginaAnterior() { if (PodeVoltar) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex - 1); }
+    void ProximaPagina() { if (PodeAvancar) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
+    void UltimaPagina() => paginationState.SetCurrentPageIndexAsync(TotalPaginas - 1);
+    #endregion
+
 
     IQueryable<Car> cars => new List<Car> {
         new Car { Id = 1, Manufacturer = "Toyota", Model = "Camry", Year = "2020" },
