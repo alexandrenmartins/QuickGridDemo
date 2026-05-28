@@ -14,7 +14,7 @@
 <h3>Suppliers from SQLite Database</h3>
 <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 
-<QuickGrid Items="filteredSuppliers" Pagination="pagination" Class="table table-bordered table-hover">
+<QuickGrid Items="filteredSuppliers" Pagination="paginationState" Class="table table-bordered table-hover">
     <PropertyColumn Property="@(x => x.SupplierID)" Title="ID" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.CompanyName)" Title="Company Name" Sortable="true">
         <ColumnOptions>
@@ -31,14 +31,45 @@
     <PropertyColumn Property="@(x => x.City)" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Region)"></PropertyColumn>
 </QuickGrid>
-<Paginator State="pagination"></Paginator>
+<!-- Paginator Original -->
+@* <Paginator State="paginationState"></Paginator> *@
+
+<!-- Paginador customizado - INÍCIO -->
+<div class="d-flex justify-content-between align-items-center mt-2">
+    <div>
+        <b>@_itensCount</b> itens
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-sm btn-outline-primary" @onclick="PrimeiraPagina" disabled="@(!PodeVoltar)">Primeira</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="PaginaAnterior" disabled="@(!PodeVoltar)">Anterior</button>
+        &nbsp;Pág. @(paginationState.CurrentPageIndex + 1) de @TotalPaginas&nbsp;
+        <button class="btn btn-sm btn-outline-primary" @onclick="ProximaPagina" disabled="@(!PodeAvancar)">Próxima</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="UltimaPagina" disabled="@(!PodeAvancar)">Última</button>
+    </div>
+</div>
+<!-- Paginador customizado - FIM -->
 
 @code {
 
     private const int QTD_ITENS_PER_PAGE = 10;
 
+    // Paginador customizado
+    #region PAGINADOR CUSTOMIZADO
+    private int _itensCount => filteredSuppliers?.Count() ?? 0;
+
+    int TotalPaginas => (int)Math.Ceiling((double)_itensCount / QTD_ITENS_PER_PAGE);
+
+    bool PodeVoltar => paginationState.CurrentPageIndex > 0;
+    bool PodeAvancar => paginationState.CurrentPageIndex < TotalPaginas - 1;
+
+    void PrimeiraPagina() => paginationState.SetCurrentPageIndexAsync(0);
+    void PaginaAnterior() { if (PodeVoltar) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex - 1); }
+    void ProximaPagina() { if (PodeAvancar) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
+    void UltimaPagina() => paginationState.SetCurrentPageIndexAsync(TotalPaginas - 1);
+    #endregion
+
     private ApplicationDbContext dbContext = default!;
-    private PaginationState pagination = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     // Variaveis para os campos dos filtros
     private string companyNameFilter = string.Empty, contactNameFilter = string.Empty;
