@@ -31,11 +31,11 @@
         <b>@_itensCount</b> itens
     </div>
     <div class="btn-group">
-        <button class="btn btn-sm btn-outline-primary" @onclick="PrimeiraPagina" disabled="@(!(paginationState.CurrentPageIndex > 0))">Primeira</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="() => paginationState.SetCurrentPageIndexAsync(0)" disabled="@(!(paginationState.CurrentPageIndex > 0))">Primeira</button>
         <button class="btn btn-sm btn-outline-primary" @onclick="PaginaAnterior" disabled="@(!(paginationState.CurrentPageIndex > 0))">Anterior</button>
         &nbsp;Pág. @(paginationState.CurrentPageIndex + 1) de @TotalPaginas&nbsp;
         <button class="btn btn-sm btn-outline-primary" @onclick="ProximaPagina" disabled="@(!(paginationState.CurrentPageIndex < TotalPaginas - 1))">Próxima</button>
-        <button class="btn btn-sm btn-outline-primary" @onclick="UltimaPagina" disabled="@(!(paginationState.CurrentPageIndex < TotalPaginas - 1))">Última</button>
+        <button class="btn btn-sm btn-outline-primary" @onclick="() => paginationState.SetCurrentPageIndexAsync(TotalPaginas - 1)" disabled="@(!(paginationState.CurrentPageIndex < TotalPaginas - 1))">Última</button>
     </div>
 </div>
 <!-- Paginador customizado - FIM -->
@@ -50,10 +50,8 @@
 
     int TotalPaginas => (int)Math.Ceiling((double)_itensCount / QTD_ITENS_PER_PAGE);
 
-    void PrimeiraPagina() => paginationState.SetCurrentPageIndexAsync(0);
     void PaginaAnterior() { if (paginationState.CurrentPageIndex > 0) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex - 1); }
     void ProximaPagina() { if (paginationState.CurrentPageIndex < TotalPaginas - 1) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
-    void UltimaPagina() => paginationState.SetCurrentPageIndexAsync(TotalPaginas - 1);
     #endregion
 
     IQueryable<Car> cars => new List<Car> {
