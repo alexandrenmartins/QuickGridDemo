@@ -18,7 +18,12 @@
     <PropertyColumn Property="@(x => x.Manufacturer)"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)"></PropertyColumn>
 </QuickGrid>
-<Paginator State="paginationState"></Paginator>
+<Paginator State="paginationState">
+    <SummaryTemplate>
+        <span>@paginationState.TotalItemCount itens</span>
+    </SummaryTemplate>
+    
+</Paginator>
 
 @code {
 
