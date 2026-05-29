@@ -5,18 +5,20 @@
 
 <PageTitle>QuickGridDemo - Carros</PageTitle>
 
-<h3><b>Carros</b> - Lista de objetos em memória</h3>
-<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+<div class="mt-2 d-flex justify-content-between align-items-baseline">
+    <h3><b>Carros</b> - Lista de objetos em memória</h3>
+    <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+</div>
 
 <QuickGrid Items="filteredCars" Class="table table-bordered table-hover" Pagination="paginationState">
-    <PropertyColumn Property="@(x => x.Id)" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Model)" Sortable="true">
+    <PropertyColumn Property="@(x => x.Id)" Sortable="true" Title="ID"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Model)" Sortable="true" Title="Modelo">
         <ColumnOptions>
             <input type="search" class="form-control" @bind="modelFilter" @bind:event="oninput" placeholder="Filter by model..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
-    <PropertyColumn Property="@(x => x.Manufacturer)"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Year)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
 </QuickGrid>
 <!-- Paginator Original com sumário de itens -->
 @* <Paginator State="paginationState">
