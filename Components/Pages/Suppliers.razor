@@ -11,25 +11,27 @@
 
 <PageTitle>QuickGridDemo - Fornecedores</PageTitle>
 
-<h3><b>Fornecedores</b> - Banco de Dados SQLite</h3>
-<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+<div class="mt-2 d-flex justify-content-between align-items-baseline">
+    <h3><b>Fornecedores</b> - Banco de Dados SQLite</h3>
+    <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+</div>
 
 <QuickGrid Items="filteredSuppliers" Pagination="paginationState" Class="table table-bordered table-hover">
     <PropertyColumn Property="@(x => x.SupplierID)" Title="ID" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.CompanyName)" Title="Company Name" Sortable="true">
+    <PropertyColumn Property="@(x => x.CompanyName)" Title="Empresa" Sortable="true">
         <ColumnOptions>
-            <input type="search" @bind="companyNameFilter" @bind:event="oninput" class="form-control" placeholder="Company Name..." />
+            <input type="search" @bind="companyNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Empresa..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
-    <PropertyColumn Property="@(x => x.ContactName)" Title="Contact Name">
+    <PropertyColumn Property="@(x => x.ContactName)" Title="Contato">
         <ColumnOptions>
-            <input type="search" @bind="contactNameFilter" @bind:event="oninput" class="form-control" placeholder="Contact Name..." />
+            <input type="search" @bind="contactNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Contato..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
-    <PropertyColumn Property="@(x => x.ContactTitle)" Title="Contact Title"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Address)"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.City)" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Region)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.ContactTitle)" Title="Cargo"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Address)" Title="Endereço"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Region)" Title="Região"></PropertyColumn>
 </QuickGrid>
 <!-- Paginator Original -->
 @* <Paginator State="paginationState"></Paginator> *@

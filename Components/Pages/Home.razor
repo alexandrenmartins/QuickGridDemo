@@ -14,7 +14,7 @@
     <PropertyColumn Property="@(x => x.Id)" Sortable="true" Title="ID"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Model)" Sortable="true" Title="Modelo">
         <ColumnOptions>
-            <input type="search" class="form-control" @bind="modelFilter" @bind:event="oninput" placeholder="Filter by model..." autofocus />
+            <input type="search" class="form-control" @bind="modelFilter" @bind:event="oninput" placeholder="Filtrar Modelo..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>

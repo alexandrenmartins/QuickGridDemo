@@ -8,29 +8,31 @@
 
 <PageTitle>QuickGridDemo - Clientes</PageTitle>
 
-<h3><b>Clientes</b> - Banco de Dados SQLite</h3>
-<h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+<div class="mt-2 d-flex justify-content-between align-items-baseline">
+    <h3><b>Clientes</b> - Banco de Dados SQLite</h3>
+    <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+</div>
 
 <p>
-    <a href="customers/create">Create New</a>
+    <a href="customers/create">Novo Cliente</a>
 </p>
 
 <QuickGrid Class="table" Items="context.Customers" Pagination="paginationState">
-    <PropertyColumn Property="customer => customer.CompanyName" Sortable="true"/>
-    <PropertyColumn Property="customer => customer.ContactName" />
-    <PropertyColumn Property="customer => customer.ContactTitle" />
-    <PropertyColumn Property="customer => customer.Address" />
-    <PropertyColumn Property="customer => customer.City" />
-    <PropertyColumn Property="customer => customer.Region" />
+    <PropertyColumn Property="customer => customer.CompanyName" Title="Cliente" Sortable="true"/>
+    <PropertyColumn Property="customer => customer.ContactName" Title="Contato" />
+    <PropertyColumn Property="customer => customer.ContactTitle" Title="Função" />
+    <PropertyColumn Property="customer => customer.Address" Title="Endereço" />
+    <PropertyColumn Property="customer => customer.City" Title="Cidade" />
+    <PropertyColumn Property="customer => customer.Region" Title="Região" />
    @*  <PropertyColumn Property="customer => customer.PostalCode" />
     <PropertyColumn Property="customer => customer.Country" />
     <PropertyColumn Property="customer => customer.Phone" />
     <PropertyColumn Property="customer => customer.Fax" /> *@
 
     <TemplateColumn Context="customer">
-        <a href="@($"customers/edit?customerid={customer.CustomerID}")">Edit</a> |
-        <a href="@($"customers/details?customerid={customer.CustomerID}")">Details</a> |
-        <a href="@($"customers/delete?customerid={customer.CustomerID}")">Delete</a>
+        <a href="@($"customers/edit?customerid={customer.CustomerID}")">Editar</a> |
+        <a href="@($"customers/details?customerid={customer.CustomerID}")">Detalhes</a> |
+        <a class="link-danger" href="@($"customers/delete?customerid={customer.CustomerID}")">Excluir</a>
     </TemplateColumn>
 </QuickGrid>
 <!-- Paginator Original -->
