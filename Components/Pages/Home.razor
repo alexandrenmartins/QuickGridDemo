@@ -6,6 +6,22 @@
 
 <PageTitle>QuickGridDemo - Carros</PageTitle>
 
+<!-- Toast de sucesso -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    @if (showToast)
+    {
+        <div class="toast show align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Carro <b>@toastCar</b> adicionado com sucesso!
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="HideToast"></button>
+            </div>
+        </div>
+    }
+</div>
+
 <div class="mt-2 d-flex justify-content-between align-items-baseline">
     <h3><b>Carros</b> - Lista de objetos em memória</h3>
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
@@ -137,6 +153,11 @@
     private bool showConfirmModal = false;
     private Car? carToDelete;
 
+    // Toast de sucesso
+    private bool showToast = false;
+    private string toastCar = string.Empty;
+    private CancellationTokenSource? toastCts;
+
     private void RequestDelete(Car car)
     {
         carToDelete = car;
@@ -161,7 +182,6 @@
 
     private void AddCar()
     {
-        // Determina o próximo Id com base no maior Id existente
         var nextId = carsList.Any() ? carsList.Max(c => c.Id) + 1 : 1;
         var carToAdd = new Car
         {
@@ -173,7 +193,33 @@
 
         carsList.Add(carToAdd);
 
+        // Exibe toast com dados do carro inserido
+        ShowToast($"{carToAdd.Model} ({carToAdd.Manufacturer})");
+
         // Limpa o formulário
         newCar = new Car();
+    }
+
+    private async void ShowToast(string carInfo)
+    {
+        toastCts?.Cancel();
+        toastCar = carInfo;
+        showToast = true;
+        StateHasChanged();
+
+        toastCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(3000, toastCts.Token);
+            showToast = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void HideToast()
+    {
+        toastCts?.Cancel();
+        showToast = false;
     }
 }
