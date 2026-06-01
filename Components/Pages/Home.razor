@@ -2,12 +2,40 @@
 
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using QuickGridDemo.Models
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>QuickGridDemo - Carros</PageTitle>
 
 <div class="mt-2 d-flex justify-content-between align-items-baseline">
     <h3><b>Carros</b> - Lista de objetos em memória</h3>
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+</div>
+
+<!-- Formulário para adicionar novo Car -->
+<div class="card my-3 p-3">
+    <EditForm Model="newCar" OnValidSubmit="AddCar">
+        <DataAnnotationsValidator />
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Fabricante</label>
+                <InputText class="form-control" @bind-Value="newCar.Manufacturer" />
+                <ValidationMessage For="() => newCar.Manufacturer" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Modelo</label>
+                <InputText class="form-control" @bind-Value="newCar.Model" />
+                <ValidationMessage For="() => newCar.Model" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ano</label>
+                <InputText class="form-control" @bind-Value="newCar.Year" />
+                <ValidationMessage For="() => newCar.Year" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Adicionar</button>
+            </div>
+        </div>
+    </EditForm>
 </div>
 
 <QuickGrid Items="filteredCars" Class="table table-bordered table-hover" Pagination="paginationState">
@@ -19,7 +47,32 @@
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
+    <TemplateColumn Title="Ações">
+        <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
+    </TemplateColumn>
 </QuickGrid>
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Deseja realmente excluir o carro <b>@carToDelete?.Model</b> (@carToDelete?.Manufacturer)?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancela</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Confirma</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 <!-- Paginator Original com sumário de itens -->
 @* <Paginator State="paginationState">
     <SummaryTemplate>
@@ -57,7 +110,7 @@
     void ProximaPagina() { if (paginationState.CurrentPageIndex < TotalPaginas - 1) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
     #endregion
 
-    IQueryable<Car> cars => new List<Car> {
+    private List<Car> carsList = new List<Car> {
         new Car { Id = 1, Manufacturer = "Toyota", Model = "Camry", Year = "2020" },
         new Car { Id = 2, Manufacturer = "Honda", Model = "Civic", Year = "2019" },
         new Car { Id = 3, Manufacturer = "Ford", Model = "Mustang", Year = "2021" },
@@ -72,8 +125,55 @@
         new Car { Id = 12, Manufacturer = "Nissan", Model = "Altima", Year = "2018" }
 
 
-    }.AsQueryable();
+    };
+
+    IQueryable<Car> cars => carsList.AsQueryable();
+    private Car newCar = new();
     PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
     string modelFilter = string.Empty;
     IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
+
+    // Modal de confirmação de exclusão
+    private bool showConfirmModal = false;
+    private Car? carToDelete;
+
+    private void RequestDelete(Car car)
+    {
+        carToDelete = car;
+        showConfirmModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (carToDelete is not null)
+        {
+            carsList.Remove(carToDelete);
+        }
+        showConfirmModal = false;
+        carToDelete = null;
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        carToDelete = null;
+    }
+
+    private void AddCar()
+    {
+        // Determina o próximo Id com base no maior Id existente
+        var nextId = carsList.Any() ? carsList.Max(c => c.Id) + 1 : 1;
+        var carToAdd = new Car
+        {
+            Id = nextId,
+            Manufacturer = newCar.Manufacturer ?? string.Empty,
+            Model = newCar.Model ?? string.Empty,
+            Year = newCar.Year ?? string.Empty
+        };
+
+        carsList.Add(carToAdd);
+
+        // Limpa o formulário
+        newCar = new Car();
+    }
 }
