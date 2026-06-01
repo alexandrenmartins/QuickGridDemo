@@ -14,7 +14,7 @@
             <div class="d-flex">
                 <div class="toast-body">
                     <i class="bi bi-check-circle-fill me-2"></i>
-                    Carro <b>@toastCar</b> adicionado com sucesso!
+                    @((MarkupString)toastMessage)
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="HideToast"></button>
             </div>
@@ -27,9 +27,9 @@
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
-<!-- Formulário para adicionar novo Car -->
+<!-- Formulário para adicionar/editar Car -->
 <div class="card my-3 p-3">
-    <EditForm Model="newCar" OnValidSubmit="AddCar">
+    <EditForm Model="newCar" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <div class="row g-2">
             <div class="col-md-4">
@@ -47,8 +47,14 @@
                 <InputText class="form-control" @bind-Value="newCar.Year" />
                 <ValidationMessage For="() => newCar.Year" />
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary">Adicionar</button>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn @(isEditing ? "btn-success" : "btn-primary")">
+                    @(isEditing ? "Salvar" : "Adicionar")
+                </button>
+                @if (isEditing)
+                {
+                    <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancelar</button>
+                }
             </div>
         </div>
     </EditForm>
@@ -64,6 +70,7 @@
     <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
     <TemplateColumn Title="Ações">
+        <button class="btn btn-primary btn-sm" @onclick="() => EditCar(context)">Editar</button>
         <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
     </TemplateColumn>
 </QuickGrid>
@@ -89,12 +96,6 @@
         </div>
     </div>
 }
-<!-- Paginator Original com sumário de itens -->
-@* <Paginator State="paginationState">
-    <SummaryTemplate>
-        <span>@paginationState.TotalItemCount itens</span>
-    </SummaryTemplate> 
-</Paginator> *@
 
 <!-- Paginador customizado - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
@@ -117,7 +118,6 @@
 
     private const int QTD_ITENS_PER_PAGE = 5;
 
-    // Paginador customizado
     #region PAGINADOR CUSTOMIZADO
     private int QtdItens => filteredCars.Count();
     private int TotalPaginas => (int)Math.Ceiling((double)QtdItens / QTD_ITENS_PER_PAGE);
@@ -139,8 +139,6 @@
         new Car { Id = 10, Manufacturer = "Hyundai", Model = "Elantra", Year = "2022" },
         new Car { Id = 11, Manufacturer = "Kia", Model = "Sorento", Year = "2021" },
         new Car { Id = 12, Manufacturer = "Nissan", Model = "Altima", Year = "2018" }
-
-
     };
 
     IQueryable<Car> cars => carsList.AsQueryable();
@@ -153,9 +151,13 @@
     private bool showConfirmModal = false;
     private Car? carToDelete;
 
+    // Estado de edição
+    private bool isEditing = false;
+    private Car? carToEdit;
+
     // Toast de sucesso
     private bool showToast = false;
-    private string toastCar = string.Empty;
+    private string toastMessage = string.Empty;
     private CancellationTokenSource? toastCts;
 
     private void RequestDelete(Car car)
@@ -180,6 +182,34 @@
         carToDelete = null;
     }
 
+    private void EditCar(Car car)
+    {
+        carToEdit = car;
+        isEditing = true;
+        newCar = new Car
+        {
+            Id = car.Id,
+            Manufacturer = car.Manufacturer,
+            Model = car.Model,
+            Year = car.Year
+        };
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        carToEdit = null;
+        newCar = new Car();
+    }
+
+    private void HandleValidSubmit()
+    {
+        if (isEditing)
+            UpdateCar();
+        else
+            AddCar();
+    }
+
     private void AddCar()
     {
         var nextId = carsList.Any() ? carsList.Max(c => c.Id) + 1 : 1;
@@ -192,18 +222,29 @@
         };
 
         carsList.Add(carToAdd);
-
-        // Exibe toast com dados do carro inserido
-        ShowToast($"{carToAdd.Model} ({carToAdd.Manufacturer})");
-
-        // Limpa o formulário
+        ShowToast($"Carro <b>{carToAdd.Model} ({carToAdd.Manufacturer})</b> adicionado com sucesso!");
         newCar = new Car();
     }
 
-    private async void ShowToast(string carInfo)
+    private void UpdateCar()
+    {
+        if (carToEdit is not null)
+        {
+            carToEdit.Manufacturer = newCar.Manufacturer ?? string.Empty;
+            carToEdit.Model = newCar.Model ?? string.Empty;
+            carToEdit.Year = newCar.Year ?? string.Empty;
+            ShowToast($"Carro <b>{carToEdit.Model} ({carToEdit.Manufacturer})</b> alterado com sucesso!");
+        }
+
+        isEditing = false;
+        carToEdit = null;
+        newCar = new Car();
+    }
+
+    private async void ShowToast(string message)
     {
         toastCts?.Cancel();
-        toastCar = carInfo;
+        toastMessage = message;
         showToast = true;
         StateHasChanged();
 
