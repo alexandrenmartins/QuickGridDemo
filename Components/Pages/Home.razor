@@ -43,6 +43,9 @@
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
+    <TemplateColumn Title="Ações">
+        <button class="btn btn-danger btn-sm" @onclick="() => DeleteCar(context)">Excluir</button>
+    </TemplateColumn>
 </QuickGrid>
 <!-- Paginator Original com sumário de itens -->
 @* <Paginator State="paginationState">
@@ -103,6 +106,11 @@
     PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
     string modelFilter = string.Empty;
     IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
+
+    private void DeleteCar(Car car)
+    {
+        carsList.Remove(car);
+    }
 
     private void AddCar()
     {
