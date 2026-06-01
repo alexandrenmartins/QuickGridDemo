@@ -12,10 +12,10 @@
 <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 
 <QuickGrid ItemsProvider="@gridItemsProvider" Virtualize="true" Class="table table-bordered table-hover" Pagination="paginationState">
-    <PropertyColumn Property="@(x => x.Title)"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.First_Publish_Year)" Title="Year"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.LanguageList)" Title="Language"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.AuthorsList)" Title="Author(s)"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Title)" Title="Título"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.First_Publish_Year)" Title="Ano"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.LanguageList)" Title="Idioma"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.AuthorsList)" Title="Autor(es)"></PropertyColumn>
 </QuickGrid>
 <Paginator State="paginationState"></Paginator>
 

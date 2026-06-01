@@ -1,8 +1,8 @@
 ﻿@page "/customers"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
-@using QuickGridDemo.Models
 @using QuickGridDemo.Data
+@using QuickGridDemo.Models
 @implements IAsyncDisposable
 @inject IDbContextFactory<QuickGridDemo.Data.ApplicationDbContext> DbFactory
 
@@ -17,8 +17,13 @@
     <a href="customers/create">Novo Cliente</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Customers" Pagination="paginationState">
-    <PropertyColumn Property="customer => customer.CompanyName" Title="Cliente" Sortable="true"/>
+@* <QuickGrid Class="table" Items="context.Customers" Pagination="paginationState"> *@
+<QuickGrid Class="table" Items="filteredCustomers" Pagination="paginationState">
+    <PropertyColumn Property="customer => customer.CompanyName" Title="Cliente" Sortable="true">
+        <ColumnOptions>
+            <input type="search" class="form-control" @bind="companyNameFilter" @bind:event="oninput" placeholder="Filtrar Cliente..." autofocus />
+        </ColumnOptions>
+    </PropertyColumn>
     <PropertyColumn Property="customer => customer.ContactName" Title="Contato" />
     <PropertyColumn Property="customer => customer.ContactTitle" Title="Função" />
     <PropertyColumn Property="customer => customer.Address" Title="Endereço" />
@@ -77,4 +82,7 @@
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private string companyNameFilter = string.Empty;
+    IQueryable<Customer> filteredCustomers => context.Customers.Where(c => c.CompanyName.ToLower().Contains(companyNameFilter));
 }
