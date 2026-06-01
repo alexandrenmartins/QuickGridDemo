@@ -44,9 +44,31 @@
     <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
     <TemplateColumn Title="Ações">
-        <button class="btn btn-danger btn-sm" @onclick="() => DeleteCar(context)">Excluir</button>
+        <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
     </TemplateColumn>
 </QuickGrid>
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Deseja realmente excluir o carro <b>@carToDelete?.Model</b> (@carToDelete?.Manufacturer)?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancela</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Confirma</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 <!-- Paginator Original com sumário de itens -->
 @* <Paginator State="paginationState">
     <SummaryTemplate>
@@ -107,9 +129,30 @@
     string modelFilter = string.Empty;
     IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
 
-    private void DeleteCar(Car car)
+    // Modal de confirmação de exclusão
+    private bool showConfirmModal = false;
+    private Car? carToDelete;
+
+    private void RequestDelete(Car car)
     {
-        carsList.Remove(car);
+        carToDelete = car;
+        showConfirmModal = true;
+    }
+
+    private void ConfirmDelete()
+    {
+        if (carToDelete is not null)
+        {
+            carsList.Remove(carToDelete);
+        }
+        showConfirmModal = false;
+        carToDelete = null;
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        carToDelete = null;
     }
 
     private void AddCar()
