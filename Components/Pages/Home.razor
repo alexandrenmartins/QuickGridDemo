@@ -14,18 +14,22 @@
 <!-- Formulário para adicionar novo Car -->
 <div class="card my-3 p-3">
     <EditForm Model="newCar" OnValidSubmit="AddCar">
+        <DataAnnotationsValidator />
         <div class="row g-2">
             <div class="col-md-4">
                 <label class="form-label">Fabricante</label>
                 <InputText class="form-control" @bind-Value="newCar.Manufacturer" />
+                <ValidationMessage For="() => newCar.Manufacturer" />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Modelo</label>
                 <InputText class="form-control" @bind-Value="newCar.Model" />
+                <ValidationMessage For="() => newCar.Model" />
             </div>
             <div class="col-md-2">
                 <label class="form-label">Ano</label>
                 <InputText class="form-control" @bind-Value="newCar.Year" />
+                <ValidationMessage For="() => newCar.Year" />
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary">Adicionar</button>
