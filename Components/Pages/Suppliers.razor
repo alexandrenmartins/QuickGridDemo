@@ -1,4 +1,4 @@
-﻿@page "/suppliers"﻿
+﻿@page "/suppliers"
 
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.EntityFrameworkCore
@@ -11,8 +11,27 @@
 
 <PageTitle>QuickGridDemo - Fornecedores</PageTitle>
 
+<!-- Toast de sucesso -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    @if (showToast)
+    {
+        <div class="toast show align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    @((MarkupString)toastMessage)
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="HideToast"></button>
+            </div>
+        </div>
+    }
+</div>
+
 <div class="mt-2 d-flex justify-content-between align-items-baseline">
-    <h3><b>Fornecedores</b> - Banco de Dados SQLite</h3>
+    <div class="d-flex align-items-center gap-3">
+        <h3><b>Fornecedores</b> - Banco de Dados SQLite</h3>
+        <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Fornecedor</button>
+    </div>
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
@@ -32,9 +51,11 @@
     <PropertyColumn Property="@(x => x.Address)" Title="Endereço"></PropertyColumn>
     <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Region)" Title="Região"></PropertyColumn>
+    <TemplateColumn Title="Ações">
+        <button class="btn btn-primary btn-sm" @onclick="() => EditSupplier(context)">Editar</button>
+        <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
+    </TemplateColumn>
 </QuickGrid>
-<!-- Paginator Original -->
-@* <Paginator State="paginationState"></Paginator> *@
 
 <!-- Paginador customizado - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
@@ -52,6 +73,87 @@
     </div>
 </div>
 <!-- Paginador customizado - FIM -->
+
+<!-- Modal de Cadastro/Edição -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? "Editar Fornecedor" : "Novo Fornecedor")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="supplierModel" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" role="alert" />
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Empresa <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="supplierModel.CompanyName" />
+                                <ValidationMessage For="() => supplierModel.CompanyName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Contato <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="supplierModel.ContactName" />
+                                <ValidationMessage For="() => supplierModel.ContactName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cargo</label>
+                                <InputText class="form-control" @bind-Value="supplierModel.ContactTitle" />
+                                <ValidationMessage For="() => supplierModel.ContactTitle" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Endereço</label>
+                                <InputText class="form-control" @bind-Value="supplierModel.Address" />
+                                <ValidationMessage For="() => supplierModel.Address" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cidade</label>
+                                <InputText class="form-control" @bind-Value="supplierModel.City" />
+                                <ValidationMessage For="() => supplierModel.City" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Região</label>
+                                <InputText class="form-control" @bind-Value="supplierModel.Region" />
+                                <ValidationMessage For="() => supplierModel.Region" class="text-danger" />
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-3">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn @(isEditing ? "btn-success" : "btn-primary")">
+                                @(isEditing ? "Salvar" : "Cadastrar")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Deseja realmente excluir o fornecedor <b>@supplierToDelete?.CompanyName</b> (@supplierToDelete?.ContactName)?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
 
@@ -73,8 +175,24 @@
     private string companyNameFilter = string.Empty, contactNameFilter = string.Empty;
 
     // Filtro para as colunas CompanyName e ContactName
-    private IQueryable<Supplier>? filteredSuppliers => dbContext.Suppliers.Where(s => s.CompanyName.ToLower().Contains(companyNameFilter) &&
+    private IQueryable<Supplier>? filteredSuppliers => dbContext.Suppliers.Where(s =>
+        s.CompanyName.ToLower().Contains(companyNameFilter) &&
         s.ContactName.ToLower().Contains(contactNameFilter));
+
+    // Estado do modal de cadastro/edição
+    private bool showModal = false;
+    private bool isEditing = false;
+    private Supplier? supplierToEdit;
+    private Supplier supplierModel = new();
+
+    // Estado do modal de exclusão
+    private bool showConfirmModal = false;
+    private Supplier? supplierToDelete;
+
+    // Toast de sucesso
+    private bool showToast = false;
+    private string toastMessage = string.Empty;
+    private CancellationTokenSource? toastCts;
 
     protected override void OnInitialized()
     {
@@ -84,5 +202,145 @@
     public async ValueTask DisposeAsync()
     {
         await dbContext.DisposeAsync();
+    }
+
+    // Modal de cadastro/edição
+    private void OpenModal()
+    {
+        isEditing = false;
+        supplierToEdit = null;
+        supplierModel = new Supplier();
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        isEditing = false;
+        supplierToEdit = null;
+        supplierModel = new Supplier();
+    }
+
+    private void EditSupplier(Supplier supplier)
+    {
+        isEditing = true;
+        supplierToEdit = supplier;
+        supplierModel = new Supplier
+        {
+            SupplierID = supplier.SupplierID,
+            CompanyName = supplier.CompanyName,
+            ContactName = supplier.ContactName,
+            ContactTitle = supplier.ContactTitle,
+            Address = supplier.Address,
+            City = supplier.City,
+            Region = supplier.Region
+        };
+        showModal = true;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isEditing)
+            await UpdateSupplier();
+        else
+            await AddSupplier();
+    }
+
+    private async Task AddSupplier()
+    {
+        var newSupplier = new Supplier
+        {
+            CompanyName = supplierModel.CompanyName,
+            ContactName = supplierModel.ContactName,
+            ContactTitle = supplierModel.ContactTitle,
+            Address = supplierModel.Address,
+            City = supplierModel.City,
+            Region = supplierModel.Region
+        };
+
+        dbContext.Suppliers.Add(newSupplier);
+        await dbContext.SaveChangesAsync();
+
+        CloseModal();
+        StateHasChanged();
+        ShowToast($"Fornecedor <b>{newSupplier.CompanyName}</b> cadastrado com sucesso!");
+    }
+
+    private async Task UpdateSupplier()
+    {
+        if (supplierToEdit is not null)
+        {
+            var existing = await dbContext.Suppliers.FindAsync(supplierToEdit.SupplierID);
+            if (existing is not null)
+            {
+                existing.CompanyName = supplierModel.CompanyName;
+                existing.ContactName = supplierModel.ContactName;
+                existing.ContactTitle = supplierModel.ContactTitle;
+                existing.Address = supplierModel.Address;
+                existing.City = supplierModel.City;
+                existing.Region = supplierModel.Region;
+
+                await dbContext.SaveChangesAsync();
+
+                CloseModal();
+                StateHasChanged();
+                ShowToast($"Fornecedor <b>{existing.CompanyName}</b> alterado com sucesso!");
+            }
+        }
+    }
+
+    // Modal de exclusão
+    private void RequestDelete(Supplier supplier)
+    {
+        supplierToDelete = supplier;
+        showConfirmModal = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (supplierToDelete is not null)
+        {
+            var existing = await dbContext.Suppliers.FindAsync(supplierToDelete.SupplierID);
+            if (existing is not null)
+            {
+                dbContext.Suppliers.Remove(existing);
+                await dbContext.SaveChangesAsync();
+                ShowToast($"Fornecedor <b>{existing.CompanyName}</b> excluído com sucesso!");
+            }
+        }
+
+        showConfirmModal = false;
+        supplierToDelete = null;
+        StateHasChanged();
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        supplierToDelete = null;
+    }
+
+    // Toast
+    private async void ShowToast(string message)
+    {
+        toastCts?.Cancel();
+        toastMessage = message;
+        showToast = true;
+        StateHasChanged();
+
+        toastCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(3000, toastCts.Token);
+            showToast = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void HideToast()
+    {
+        toastCts?.Cancel();
+        showToast = false;
     }
 }
