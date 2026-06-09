@@ -67,7 +67,11 @@
             <input type="search" class="form-control" @bind="modelFilter" @bind:event="oninput" placeholder="Filtrar Modelo..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
-    <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Manufacturer)" Title="Fabricante">
+        <ColumnOptions>
+            <input type="search" class="form-control" @bind="fabricanteFilter" @bind:event="oninput" placeholder="Filtrar Fabricante..." autofocus />
+        </ColumnOptions>
+    </PropertyColumn>
     <PropertyColumn Property="@(x => x.Year)" Title="Ano"></PropertyColumn>
     <TemplateColumn Title="Ações">
         <button class="btn btn-primary btn-sm" @onclick="() => EditCar(context)">Editar</button>
@@ -146,8 +150,10 @@
     IQueryable<Car> cars => carsList.AsQueryable();
     private Car newCar = new();
     PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
-    string modelFilter = string.Empty;
-    IQueryable<Car> filteredCars => cars.Where(c => c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase));
+    string modelFilter = string.Empty, fabricanteFilter = string.Empty;
+    IQueryable<Car> filteredCars => cars.Where(c => 
+        c.Model.Contains(modelFilter, StringComparison.InvariantCultureIgnoreCase) &&
+        c.Manufacturer.Contains(fabricanteFilter, StringComparison.InvariantCultureIgnoreCase));
 
     // Modal de confirmação de exclusão
     private bool showConfirmModal = false;
