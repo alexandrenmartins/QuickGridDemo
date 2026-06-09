@@ -18,7 +18,7 @@
 </p>
 
 @* <QuickGrid Class="table" Items="context.Customers" Pagination="paginationState"> *@
-<QuickGrid Class="table" Items="filteredCustomers" Pagination="paginationState">
+<QuickGrid Class="table table-striped table-hover" Items="filteredCustomers" Pagination="paginationState">
     <PropertyColumn Property="customer => customer.CompanyName" Title="Cliente" Sortable="true">
         <ColumnOptions>
             <input type="search" class="form-control" @bind="companyNameFilter" @bind:event="oninput" placeholder="Filtrar Cliente..." autofocus />

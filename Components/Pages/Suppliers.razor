@@ -35,7 +35,7 @@
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
-<QuickGrid Items="filteredSuppliers" Pagination="paginationState" Class="table table-bordered table-hover">
+<QuickGrid Items="filteredSuppliers" Pagination="paginationState" Class="table table-striped table-bordered table-hover">
     <PropertyColumn Property="@(x => x.SupplierID)" Title="ID" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.CompanyName)" Title="Empresa" Sortable="true">
         <ColumnOptions>

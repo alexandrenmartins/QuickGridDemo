@@ -60,7 +60,7 @@
     </EditForm>
 </div>
 
-<QuickGrid Items="filteredCars" Class="table table-bordered table-hover" Pagination="paginationState">
+<QuickGrid Items="filteredCars" Class="table table-striped table-bordered table-hover" Pagination="paginationState">
     <PropertyColumn Property="@(x => x.Id)" Sortable="true" Title="ID"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Model)" Sortable="true" Title="Modelo">
         <ColumnOptions>
