@@ -3,13 +3,11 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using QuickGridDemo.Data
 @using QuickGridDemo.Models
-@implements IAsyncDisposable
-@inject IDbContextFactory<QuickGridDemo.Data.ApplicationDbContext> DbFactory
 
 <PageTitle>QuickGridDemo - Clientes</PageTitle>
 
 <div class="mt-2 d-flex justify-content-between align-items-baseline">
-    <h3><b>Clientes</b> - Banco de Dados SQLite</h3>
+    <h3><b>Clientes</b> - Banco de Dados SQL Server</h3>
     <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
@@ -17,11 +15,10 @@
     <a href="customers/create">Novo Cliente</a>
 </p>
 
-@* <QuickGrid Class="table" Items="context.Customers" Pagination="paginationState"> *@
-<QuickGrid Class="table table-striped table-hover" Items="filteredCustomers" Pagination="paginationState">
+<QuickGrid Class="table table-striped table-hover" Items="filteredCustomers.AsQueryable()" Pagination="paginationState">
     <PropertyColumn Property="customer => customer.CompanyName" Title="Cliente" Sortable="true">
         <ColumnOptions>
-            <input type="search" class="form-control" @bind="companyNameFilter" @bind:event="oninput" placeholder="Filtrar Cliente..." autofocus />
+            <input type="search" class="form-control" value="@companyNameFilter" @oninput="OnFilterChanged" placeholder="Filtrar Cliente..." autofocus />
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="customer => customer.ContactName" Title="Contato" />
@@ -29,10 +26,6 @@
     <PropertyColumn Property="customer => customer.Address" Title="Endereço" />
     <PropertyColumn Property="customer => customer.City" Title="Cidade" />
     <PropertyColumn Property="customer => customer.Region" Title="Região" />
-   @*  <PropertyColumn Property="customer => customer.PostalCode" />
-    <PropertyColumn Property="customer => customer.Country" />
-    <PropertyColumn Property="customer => customer.Phone" />
-    <PropertyColumn Property="customer => customer.Fax" /> *@
 
     <TemplateColumn Context="customer">
         <a href="@($"customers/edit?customerid={customer.CustomerID}")">Editar</a> |
@@ -40,13 +33,11 @@
         <a class="link-danger" href="@($"customers/delete?customerid={customer.CustomerID}")">Excluir</a>
     </TemplateColumn>
 </QuickGrid>
-<!-- Paginator Original -->
-@* <Paginator State="paginationState"></Paginator> *@
 
 <!-- Paginador customizado - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
     <div>
-        <b>@QtdItens</b> itens
+        <b>@qtdItens</b> itens
     </div>
     <div class="btn-group">
         <nav role="navigation" b-3qssc0bm46>
@@ -60,29 +51,39 @@
 </div>
 <!-- Paginador customizado - FIM -->
 
+@inject IDbContextFactory<ApplicationDbContextSqlServer> DbContextFactory
+
 @code {
 
     private const int QTD_ITENS_PER_PAGE = 12;
 
-    // Paginador customizado
-    #region PAGINADOR CUSTOMIZADO
-    private int QtdItens => context.Customers?.Count() ?? 0;
-    private int TotalPaginas => (int)Math.Ceiling((double)QtdItens / QTD_ITENS_PER_PAGE);
+    private int qtdItens;
+    private int TotalPaginas => (int)Math.Ceiling((double)qtdItens / QTD_ITENS_PER_PAGE);
+    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     void PaginaAnterior() { if (paginationState.CurrentPageIndex > 0) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex - 1); }
     void ProximaPagina() { if (paginationState.CurrentPageIndex < TotalPaginas - 1) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
-    #endregion
 
-    private ApplicationDbContext context = default!;
-    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
+    private List<Customer> filteredCustomers = new();
+    private string companyNameFilter = string.Empty;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        context = DbFactory.CreateDbContext();
+        await LoadDataAsync();
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    private async Task LoadDataAsync()
+    {
+        using var ctx = DbContextFactory.CreateDbContext();
+        filteredCustomers = await ctx.Customers
+            .Where(c => c.CompanyName.ToLower().Contains(companyNameFilter))
+            .ToListAsync();
+        qtdItens = filteredCustomers.Count;
+    }
 
-    private string companyNameFilter = string.Empty;
-    IQueryable<Customer> filteredCustomers => context.Customers.Where(c => c.CompanyName.ToLower().Contains(companyNameFilter));
+    private async Task OnFilterChanged(ChangeEventArgs e)
+    {
+        companyNameFilter = e.Value?.ToString() ?? string.Empty;
+        await LoadDataAsync();
+    }
 }

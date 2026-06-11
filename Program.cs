@@ -17,10 +17,33 @@ namespace QuickGridDemo
             builder.Services.AddQuickGridEntityFrameworkAdapter();
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-            builder.Services.AddDbContextFactory<ApplicationDbContext>();
+            // substituir registro atual de DbContextFactory por duas factories específicas
+            builder.Services.AddDbContextFactory<ApplicationDbContextSqlite>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection")));
+
+            builder.Services.AddDbContextFactory<ApplicationDbContextSqlServer>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("QuickGridConnection")));
             builder.Services.AddHttpClient();
 
             var app = builder.Build();
+
+            // Auto-migration para SQL Server
+            using (var scope = app.Services.CreateScope())
+            {
+                var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContextSqlServer>>();
+                using var context = factory.CreateDbContext();
+                context.Database.Migrate();
+
+                // Seed: adicionar 10.000 registros na tabela Customers
+                //if (!context.Customers.Any())
+                    var maxId = context.Customers.Any()
+                        ? int.Parse(context.Customers.Max(c => c.CustomerID))
+                        : 0;
+                    var customers = SeedData.GenerateCustomers(10_000, startId: maxId + 1);
+                    context.Customers.AddRange(customers);
+                    context.SaveChanges();
+                //}
+            }
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())

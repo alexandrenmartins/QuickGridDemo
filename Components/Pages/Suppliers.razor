@@ -7,7 +7,7 @@
 
 @implements IAsyncDisposable
 
-@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject IDbContextFactory<ApplicationDbContextSqlite> DbContextFactory
 
 <PageTitle>QuickGridDemo - Fornecedores</PageTitle>
 
@@ -168,7 +168,7 @@
     void ProximaPagina() { if (paginationState.CurrentPageIndex < TotalPaginas - 1) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
     #endregion
 
-    private ApplicationDbContext dbContext = default!;
+    private ApplicationDbContextSqlite dbContext = default!;
     private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     // Variaveis para os campos dos filtros
