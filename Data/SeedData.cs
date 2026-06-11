@@ -5,7 +5,7 @@ namespace QuickGridDemo.Data;
 
 public static class SeedData
 {
-    public static List<Customer> GenerateCustomers(int count = 10_000)
+    public static List<Customer> GenerateCustomers(int count = 10_000, int startId = 1)
     {
         var faker = new Faker<Customer>("pt_BR")
             .RuleFor(c => c.CustomerID, f => f.Random.AlphaNumeric(5).ToUpper())
@@ -23,7 +23,7 @@ public static class SeedData
         var customers = faker.Generate(count);
         for (int i = 0; i < customers.Count; i++)
         {
-            customers[i].CustomerID = (i + 1).ToString("D5"); // 00001 .. 10000
+            customers[i].CustomerID = (startId + i).ToString("D5");
         }
 
         return customers;
