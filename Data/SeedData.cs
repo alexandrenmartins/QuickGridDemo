@@ -5,10 +5,9 @@ namespace QuickGridDemo.Data;
 
 public static class SeedData
 {
-    public static List<Customer> GenerateCustomers(int count = 10_000, int startId = 1)
+    public static List<Customer> GenerateCustomers(int count = 10_000)
     {
         var faker = new Faker<Customer>("pt_BR")
-            .RuleFor(c => c.CustomerID, f => f.Random.AlphaNumeric(5).ToUpper())
             .RuleFor(c => c.CompanyName, f => f.Company.CompanyName())
             .RuleFor(c => c.ContactName, f => f.Person.FullName)
             .RuleFor(c => c.ContactTitle, f => f.Name.JobTitle())
@@ -20,16 +19,10 @@ public static class SeedData
             .RuleFor(c => c.Phone, f => f.Phone.PhoneNumber("(##) ####-####"))
             .RuleFor(c => c.Fax, f => f.Phone.PhoneNumber("(##) ####-####"));
 
-        var customers = faker.Generate(count);
-        for (int i = 0; i < customers.Count; i++)
-        {
-            customers[i].CustomerID = (startId + i).ToString("D5");
-        }
-
-        return customers;
+        return faker.Generate(count);
     }
 
-    public static List<Employee> GenerateEmployees(int count = 10_000, int startId = 1)
+    public static List<Employee> GenerateEmployees(int count = 10_000)
     {
         var faker = new Faker<Employee>("pt_BR")
             .RuleFor(e => e.FirstName, f => f.Person.FirstName)
@@ -47,12 +40,6 @@ public static class SeedData
             .RuleFor(e => e.Extension, f => f.Random.AlphaNumeric(4).ToUpper())
             .RuleFor(e => e.Notes, f => f.Lorem.Sentence(f.Random.Int(5, 15)));
 
-        var employees = faker.Generate(count);
-        for (int i = 0; i < employees.Count; i++)
-        {
-            employees[i].EmployeeID = startId + i;
-        }
-
-        return employees;
+        return faker.Generate(count);
     }
 }

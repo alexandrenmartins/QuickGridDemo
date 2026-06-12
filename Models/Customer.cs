@@ -1,11 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace QuickGridDemo.Models;
 
 public class Customer
 {
-        [StringLength(5)]
-    public string CustomerID { get; set; } = string.Empty;
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int CustomerID { get; set; }
 
     [Required(ErrorMessage = "Nome do Cliente é obrigatório")]
     [StringLength(40)]

@@ -11,8 +11,8 @@ using QuickGridDemo.Data;
 namespace QuickGridDemo.Data.Migrations.SqlServerMigrations
 {
     [DbContext(typeof(ApplicationDbContextSqlServer))]
-    [Migration("20260611175920_UpdateRegionMaxLength")]
-    partial class UpdateRegionMaxLength
+    [Migration("20260612183716_InitialCreateSqlServer")]
+    partial class InitialCreateSqlServer
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,17 +26,19 @@ namespace QuickGridDemo.Data.Migrations.SqlServerMigrations
 
             modelBuilder.Entity("QuickGridDemo.Models.Customer", b =>
                 {
-                    b.Property<string>("CustomerID")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
+                    b.Property<int>("CustomerID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomerID"));
 
                     b.Property<string>("Address")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
                     b.Property<string>("City")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<string>("CompanyName")
                         .IsRequired()
@@ -54,8 +56,8 @@ namespace QuickGridDemo.Data.Migrations.SqlServerMigrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Country")
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<string>("Fax")
                         .HasMaxLength(24)

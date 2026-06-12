@@ -30,19 +30,25 @@
         <h3><b>Funcionários</b> - Banco de Dados PostgreSQL</h3>
         <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
     </div>
-    <h5>@QTD_ITENS_PER_PAGE itens por página</h5>
+    <h5>Keyset Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
-<QuickGrid Items="filteredEmployees" Pagination="paginationState" Class="table table-striped table-bordered table-hover">
+<QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
     <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true">
         <ColumnOptions>
-            <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Nome..." autofocus />
+            <div class="d-flex gap-1">
+                <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Nome..." autofocus />
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
+            </div>
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true">
         <ColumnOptions>
-            <input type="search" @bind="lastNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Sobrenome..." autofocus />
+            <div class="d-flex gap-1">
+                <input type="search" @bind="lastNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Sobrenome..." autofocus />
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
+            </div>
         </ColumnOptions>
     </PropertyColumn>
     <PropertyColumn Property="@(x => x.Title)" Title="Cargo"></PropertyColumn>
@@ -55,22 +61,27 @@
     </TemplateColumn>
 </QuickGrid>
 
-<!-- Paginador customizado - INÍCIO -->
+<!-- Paginador Keyset - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
     <div>
-        <b>@QtdItens</b> itens
+        @if (employeesPage.Any())
+        {
+            <span>Mostrando <b>@employeesPage.First().EmployeeID</b> a <b>@employeesPage.Last().EmployeeID</b></span>
+        }
+        else
+        {
+            <span>Nenhum registro encontrado</span>
+        }
     </div>
     <div class="btn-group">
         <nav role="navigation" b-3qssc0bm46>
-            <button class="go-first" title="Primeira página" @onclick="() => paginationState.SetCurrentPageIndexAsync(0)" disabled="@(!(paginationState.CurrentPageIndex > 0))" b-3qssc0bm46></button>
-            <button class="go-previous" title="Página anterior" @onclick="PaginaAnterior" disabled="@(!(paginationState.CurrentPageIndex > 0))" b-3qssc0bm46></button>
-            &nbsp;Pág. <b>@(paginationState.CurrentPageIndex + 1)</b> de <b>@TotalPaginas</b>&nbsp;
-            <button class="go-next" title="Próxima página" @onclick="ProximaPagina" disabled="@(!(paginationState.CurrentPageIndex < TotalPaginas - 1))" b-3qssc0bm46></button>
-            <button class="go-last" title="Última página" @onclick="() => paginationState.SetCurrentPageIndexAsync(TotalPaginas - 1)" disabled="@(!(paginationState.CurrentPageIndex < TotalPaginas - 1))" b-3qssc0bm46></button>
+            <button class="go-first" title="Primeira página" @onclick="GoToFirstPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
+            &nbsp;
+            <button class="go-next" title="Próxima página" @onclick="GoToNextPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
         </nav>
     </div>
 </div>
-<!-- Paginador customizado - FIM -->
+<!-- Paginador Keyset - FIM -->
 
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
@@ -184,23 +195,16 @@
 
 @code {
 
-    private const int QTD_ITENS_PER_PAGE = 10;
+    private const int QTD_ITENS_PER_PAGE = 15;
 
-    private List<Employee> allEmployeesList = new();
-    private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
+    // Keyset Pagination state
+    private List<Employee> employeesPage = new();
+    private int? lastId = null;
+    private bool hasMore = false;
+    private bool hasPreviousPage = false;
+    private Stack<int?> cursorHistory = new();
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
-
-    private IQueryable<Employee> filteredEmployees => allEmployeesList
-        .Where(e => e.FirstName.ToLower().Contains(firstNameFilter) &&
-                     e.LastName.ToLower().Contains(lastNameFilter))
-        .AsQueryable();
-
-    private int QtdItens => filteredEmployees.Count();
-    private int TotalPaginas => (int)Math.Ceiling((double)QtdItens / QTD_ITENS_PER_PAGE);
-
-    void PaginaAnterior() { if (paginationState.CurrentPageIndex > 0) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex - 1); }
-    void ProximaPagina() { if (paginationState.CurrentPageIndex < TotalPaginas - 1) paginationState.SetCurrentPageIndexAsync(paginationState.CurrentPageIndex + 1); }
 
     private bool showModal = false;
     private bool isEditing = false;
@@ -216,21 +220,60 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataEmployeesAsync();
+        await LoadPageAsync(null);
     }
 
-    private async Task LoadDataEmployeesAsync()
+    private async Task LoadPageAsync(int? cursor)
     {
         using var context = DbContextFactory.CreateDbContext();
-        allEmployeesList = await context.Employees.Where(e => 
-            e.FirstName.ToLower().Contains(firstNameFilter) && 
-            e.LastName.ToLower().Contains(lastNameFilter))
+
+        IQueryable<Employee> query = context.Employees
+            .AsNoTracking()
+            .OrderBy(e => e.EmployeeID);
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(firstNameFilter))
+            query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
+        if (!string.IsNullOrWhiteSpace(lastNameFilter))
+            query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+
+        // Keyset: buscar a partir do cursor
+        if (cursor.HasValue)
+            query = query.Where(e => e.EmployeeID > cursor.Value);
+
+        // Busca N+1 para detectar se há próxima página
+        var page = await query
+            .Take(QTD_ITENS_PER_PAGE + 1)
             .ToListAsync();
-        //allEmployeesList = await context.Employees.AsNoTracking().ToListAsync();
-        // AsNoTracking() - Desativa o rastreamento de mudanças do EF Core para as entidades retornadas
-        // * EF não rastreia essas entidades
-        // * Melhor para leitura (read-only); menos memória
-        // * Ideal quando você não vai modificar os dados
+
+        hasMore = page.Count > QTD_ITENS_PER_PAGE;
+        employeesPage = page.Take(QTD_ITENS_PER_PAGE).ToList();
+        lastId = employeesPage.LastOrDefault()?.EmployeeID;
+    }
+
+    private async Task GoToFirstPageAsync()
+    {
+        cursorHistory.Clear();
+        hasPreviousPage = false;
+        await LoadPageAsync(null);
+    }
+
+    private async Task GoToNextPageAsync()
+    {
+        if (hasMore && lastId.HasValue)
+        {
+            cursorHistory.Push(lastId);
+            hasPreviousPage = true;
+            await LoadPageAsync(lastId);
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        cursorHistory.Clear();
+        hasPreviousPage = false;
+        lastId = null;
+        await LoadPageAsync(null);
     }
 
     private void OpenModal()
@@ -291,8 +334,8 @@
             LastName = employeeModel.LastName,
             Title = employeeModel.Title,
             TitleOfCourtesy = employeeModel.TitleOfCourtesy,
-            BirthDate = employeeModel.BirthDate,
-            HireDate = employeeModel.HireDate,
+            BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null,
+            HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null,
             Address = employeeModel.Address,
             City = employeeModel.City,
             Region = employeeModel.Region,
@@ -307,7 +350,9 @@
         await context.SaveChangesAsync();
 
         CloseModal();
-        await LoadDataEmployeesAsync();
+        await LoadPageAsync(null);
+        cursorHistory.Clear();
+        hasPreviousPage = false;
         ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
     }
 
@@ -323,8 +368,8 @@
                 existing.LastName = employeeModel.LastName;
                 existing.Title = employeeModel.Title;
                 existing.TitleOfCourtesy = employeeModel.TitleOfCourtesy;
-                existing.BirthDate = employeeModel.BirthDate;
-                existing.HireDate = employeeModel.HireDate;
+                existing.BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null;
+                existing.HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null;
                 existing.Address = employeeModel.Address;
                 existing.City = employeeModel.City;
                 existing.Region = employeeModel.Region;
@@ -337,7 +382,9 @@
                 await context.SaveChangesAsync();
 
                 CloseModal();
-                await LoadDataEmployeesAsync();
+                await LoadPageAsync(null);
+                cursorHistory.Clear();
+                hasPreviousPage = false;
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> alterado com sucesso!");
             }
         }
@@ -362,7 +409,9 @@
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
             }
 
-            await LoadDataEmployeesAsync();
+            await LoadPageAsync(null);
+            cursorHistory.Clear();
+            hasPreviousPage = false;
         }
 
         showConfirmModal = false;
