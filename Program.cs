@@ -1,4 +1,4 @@
-﻿using QuickGridDemo.Components;
+using QuickGridDemo.Components;
 using QuickGridDemo.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,12 +17,17 @@ namespace QuickGridDemo
             builder.Services.AddQuickGridEntityFrameworkAdapter();
 
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-            // substituir registro atual de DbContextFactory por duas factories específicas
+            // substituir registro atual de DbContextFactory por duas factories especificas
             builder.Services.AddDbContextFactory<ApplicationDbContextSqlite>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("SqliteConnection")));
 
             builder.Services.AddDbContextFactory<ApplicationDbContextSqlServer>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("QuickGridConnection")));
+
+            // PostgreSQL - Funcionarios
+            builder.Services.AddDbContextFactory<ApplicationDbContextPostgreSql>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSqlConnection")));
+
             builder.Services.AddHttpClient();
 
             var app = builder.Build();
@@ -35,7 +40,7 @@ namespace QuickGridDemo
                 context.Database.Migrate();
 
                 // Seed: adicionar 10.000 registros na tabela Customers
-                if (!context.Customers.Any()) //Comentar esta linha para adicionar mais registros sem verificar se já existem
+                if (!context.Customers.Any())
                 { 
                     var maxId = context.Customers.Any()
                         ? int.Parse(context.Customers.Max(c => c.CustomerID))
@@ -44,6 +49,15 @@ namespace QuickGridDemo
                     context.Customers.AddRange(customers);
                     context.SaveChanges();
                 }
+            }
+
+            // Auto-migration para PostgreSQL
+            using (var scope = app.Services.CreateScope())
+            {
+                var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContextPostgreSql>>();
+                using var context = factory.CreateDbContext();
+                //context.Database.EnsureCreated(); // Seria para criar o banco e as tabelas, mas não aplica migrações
+                context.Database.Migrate();
             }
 
             // Configure the HTTP request pipeline.

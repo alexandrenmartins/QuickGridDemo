@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuickGridDemo.Models;
 
 namespace QuickGridDemo.Data;
