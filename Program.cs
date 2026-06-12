@@ -41,11 +41,8 @@ namespace QuickGridDemo
 
                 // Seed: adicionar 10.000 registros na tabela Customers
                 //if (!context.Customers.Any())
-                { 
-                    var maxId = context.Customers.Any()
-                        ? int.Parse(context.Customers.Max(c => c.CustomerID))
-                        : 0;
-                    var customers = SeedData.GenerateCustomers(10_000, startId: maxId + 1);
+                {
+                    var customers = SeedData.GenerateCustomers(10_000);
                     context.Customers.AddRange(customers);
                     context.SaveChanges();
                 }
@@ -62,10 +59,7 @@ namespace QuickGridDemo
                 // Seed: adicionar 10.000 registros na tabela Employees
                 //if (!context.Employees.Any())
                 {
-                    var maxId = context.Employees.Any()
-                        ? context.Employees.Max(c => c.EmployeeID)
-                        : 0;
-                    var employees = SeedData.GenerateEmployees(10_000, startId: maxId + 1);
+                    var employees = SeedData.GenerateEmployees(10_000);
                     context.Employees.AddRange(employees);
                     context.SaveChanges();
                 }
