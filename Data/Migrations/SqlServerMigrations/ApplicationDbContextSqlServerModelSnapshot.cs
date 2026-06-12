@@ -23,9 +23,11 @@ namespace QuickGridDemo.Data.Migrations.SqlServerMigrations
 
             modelBuilder.Entity("QuickGridDemo.Models.Customer", b =>
                 {
-                    b.Property<string>("CustomerID")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
+                    b.Property<int>("CustomerID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CustomerID"));
 
                     b.Property<string>("Address")
                         .HasMaxLength(60)
