@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QuickGridDemo.Data;
@@ -11,9 +12,11 @@ using QuickGridDemo.Data;
 namespace QuickGridDemo.Data.Migrations.PostgreSqlMigrations
 {
     [DbContext(typeof(ApplicationDbContextPostgreSql))]
-    partial class ApplicationDbContextPostgreSqlModelSnapshot : ModelSnapshot
+    [Migration("20260612181955_InitialCreatePostgreSql")]
+    partial class InitialCreatePostgreSql
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
