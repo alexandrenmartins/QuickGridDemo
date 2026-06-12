@@ -40,7 +40,7 @@ namespace QuickGridDemo
                 context.Database.Migrate();
 
                 // Seed: adicionar 10.000 registros na tabela Customers
-                if (!context.Customers.Any())
+                //if (!context.Customers.Any())
                 { 
                     var maxId = context.Customers.Any()
                         ? int.Parse(context.Customers.Max(c => c.CustomerID))

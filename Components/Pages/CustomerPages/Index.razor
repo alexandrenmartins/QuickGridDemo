@@ -69,10 +69,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await LoadDataCustomersAsync();
     }
 
-    private async Task LoadDataAsync()
+    private async Task LoadDataCustomersAsync()
     {
         using var ctx = DbContextFactory.CreateDbContext();
         filteredCustomers = await ctx.Customers
@@ -84,6 +84,6 @@
     private async Task OnFilterChanged(ChangeEventArgs e)
     {
         companyNameFilter = e.Value?.ToString() ?? string.Empty;
-        await LoadDataAsync();
+        await LoadDataCustomersAsync();
     }
 }

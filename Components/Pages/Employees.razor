@@ -186,12 +186,12 @@
 
     private const int QTD_ITENS_PER_PAGE = 10;
 
-    private List<Employee> allEmployees = new();
+    private List<Employee> allEmployeesList = new();
     private PaginationState paginationState = new PaginationState { ItemsPerPage = QTD_ITENS_PER_PAGE };
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
 
-    private IQueryable<Employee> filteredEmployees => allEmployees
+    private IQueryable<Employee> filteredEmployees => allEmployeesList
         .Where(e => e.FirstName.ToLower().Contains(firstNameFilter) &&
                      e.LastName.ToLower().Contains(lastNameFilter))
         .AsQueryable();
@@ -216,13 +216,21 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEmployees();
+        await LoadDataEmployeesAsync();
     }
 
-    private async Task LoadEmployees()
+    private async Task LoadDataEmployeesAsync()
     {
         using var context = DbContextFactory.CreateDbContext();
-        allEmployees = await context.Employees.AsNoTracking().ToListAsync();
+        allEmployeesList = await context.Employees.Where(e => 
+            e.FirstName.ToLower().Contains(firstNameFilter) && 
+            e.LastName.ToLower().Contains(lastNameFilter))
+            .ToListAsync();
+        //allEmployeesList = await context.Employees.AsNoTracking().ToListAsync();
+        // AsNoTracking() - Desativa o rastreamento de mudanças do EF Core para as entidades retornadas
+        // * EF não rastreia essas entidades
+        // * Melhor para leitura (read-only); menos memória
+        // * Ideal quando você não vai modificar os dados
     }
 
     private void OpenModal()
@@ -299,7 +307,7 @@
         await context.SaveChangesAsync();
 
         CloseModal();
-        await LoadEmployees();
+        await LoadDataEmployeesAsync();
         ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
     }
 
@@ -329,7 +337,7 @@
                 await context.SaveChangesAsync();
 
                 CloseModal();
-                await LoadEmployees();
+                await LoadDataEmployeesAsync();
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> alterado com sucesso!");
             }
         }
@@ -354,7 +362,7 @@
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
             }
 
-            await LoadEmployees();
+            await LoadDataEmployeesAsync();
         }
 
         showConfirmModal = false;
