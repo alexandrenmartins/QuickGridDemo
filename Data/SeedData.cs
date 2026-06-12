@@ -28,4 +28,31 @@ public static class SeedData
 
         return customers;
     }
+
+    public static List<Employee> GenerateEmployees(int count = 10_000, int startId = 1)
+    {
+        var faker = new Faker<Employee>("pt_BR")
+            .RuleFor(e => e.FirstName, f => f.Person.FirstName)
+            .RuleFor(e => e.LastName, f => f.Person.LastName)
+            .RuleFor(e => e.Title, f => f.Name.JobTitle())
+            .RuleFor(e => e.TitleOfCourtesy, f => f.PickRandom("Sr.", "Sra.", "Dr.", "Dra."))
+            .RuleFor(e => e.BirthDate, f => f.Date.Past(50, DateTime.Today.AddYears(-22)).ToUniversalTime())
+            .RuleFor(e => e.HireDate, f => f.Date.Past(10, DateTime.Today).ToUniversalTime())
+            .RuleFor(e => e.Address, f => f.Address.StreetAddress())
+            .RuleFor(e => e.City, f => f.Address.City())
+            .RuleFor(e => e.Region, f => f.Address.State())
+            .RuleFor(e => e.PostalCode, f => f.Address.ZipCode("#####-###"))
+            .RuleFor(e => e.Country, f => f.Address.Country())
+            .RuleFor(e => e.HomePhone, f => f.Phone.PhoneNumber("(##) #####-####"))
+            .RuleFor(e => e.Extension, f => f.Random.AlphaNumeric(4).ToUpper())
+            .RuleFor(e => e.Notes, f => f.Lorem.Sentence(f.Random.Int(5, 15)));
+
+        var employees = faker.Generate(count);
+        for (int i = 0; i < employees.Count; i++)
+        {
+            employees[i].EmployeeID = startId + i;
+        }
+
+        return employees;
+    }
 }

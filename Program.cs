@@ -58,6 +58,17 @@ namespace QuickGridDemo
                 using var context = factory.CreateDbContext();
                 //context.Database.EnsureCreated(); // Seria para criar o banco e as tabelas, mas não aplica migrações
                 context.Database.Migrate();
+
+                // Seed: adicionar 10.000 registros na tabela Employees
+                //if (!context.Employees.Any())
+                {
+                    var maxId = context.Employees.Any()
+                        ? context.Employees.Max(c => c.EmployeeID)
+                        : 0;
+                    var employees = SeedData.GenerateEmployees(10_000, startId: maxId + 1);
+                    context.Employees.AddRange(employees);
+                    context.SaveChanges();
+                }
             }
 
             // Configure the HTTP request pipeline.
