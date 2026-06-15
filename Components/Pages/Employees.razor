@@ -27,7 +27,7 @@
 
 <div class="mt-2 d-flex justify-content-between align-items-baseline">
     <div class="d-flex align-items-center gap-3">
-        <h3><b>Funcionários</b> - Banco de Dados PostgreSQL</h3>
+        <h3><b>Funcionários</b> - Banco de Dados PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
         <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
     </div>
     <h5>Keyset Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
@@ -196,6 +196,7 @@
 @code {
 
     private const int QTD_ITENS_PER_PAGE = 15;
+    private int totalCount = 0;
 
     // Keyset Pagination state
     private List<Employee> employeesPage = new();
@@ -220,6 +221,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        using var context = DbContextFactory.CreateDbContext();
+        totalCount = await context.Employees.CountAsync();
         await LoadPageAsync(null);
     }
 
@@ -350,6 +353,7 @@
         await context.SaveChangesAsync();
 
         CloseModal();
+        totalCount++;
         await LoadPageAsync(null);
         cursorHistory.Clear();
         hasPreviousPage = false;
@@ -406,6 +410,7 @@
             {
                 context.Employees.Remove(existing);
                 await context.SaveChangesAsync();
+                totalCount--;
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
             }
 
