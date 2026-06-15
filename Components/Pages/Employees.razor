@@ -66,7 +66,7 @@
     <div>
         @if (employeesPage.Any())
         {
-            <span>Mostrando <b>@employeesPage.First().EmployeeID</b> a <b>@employeesPage.Last().EmployeeID</b> de <b>@filteredCount</b> registros</span>
+            <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
         }
         else
         {
@@ -204,7 +204,30 @@
     private int? lastId = null;
     private bool hasMore = false;
     private bool hasPreviousPage = false;
-    private Stack<int?> cursorHistory = new();
+    private Stack<(int? employeeId, int startOffset)> cursorHistory = new();
+
+    private bool isLastPage => cursorHistory.Count * QTD_ITENS_PER_PAGE + employeesPage.Count >= filteredCount;
+
+    private int startPosition
+    {
+        get
+        {
+            if (isLastPage && employeesPage.Count > 0)
+                return filteredCount - employeesPage.Count + 1;
+            return cursorHistory.Count * QTD_ITENS_PER_PAGE + 1;
+        }
+    }
+
+    private int endPosition
+    {
+        get
+        {
+            if (isLastPage && employeesPage.Count > 0)
+                return filteredCount;
+            int calculated = startPosition + employeesPage.Count - 1;
+            return Math.Min(calculated, filteredCount);
+        }
+    }
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
 
@@ -268,7 +291,8 @@
     {
         if (hasMore && lastId.HasValue)
         {
-            cursorHistory.Push(lastId);
+            int currentOffset = cursorHistory.Count * QTD_ITENS_PER_PAGE + employeesPage.Count;
+            cursorHistory.Push((lastId, currentOffset));
             hasPreviousPage = true;
             await LoadPageAsync(lastId);
         }
