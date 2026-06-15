@@ -66,7 +66,7 @@
     <div>
         @if (employeesPage.Any())
         {
-            <span>Mostrando <b>@employeesPage.First().EmployeeID</b> a <b>@employeesPage.Last().EmployeeID</b></span>
+            <span>Mostrando <b>@employeesPage.First().EmployeeID</b> a <b>@employeesPage.Last().EmployeeID</b> de <b>@filteredCount</b> registros</span>
         }
         else
         {
@@ -197,6 +197,7 @@
 
     private const int QTD_ITENS_PER_PAGE = 15;
     private int totalCount = 0;
+    private int filteredCount = 0;
 
     // Keyset Pagination state
     private List<Employee> employeesPage = new();
@@ -239,6 +240,8 @@
             query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
         if (!string.IsNullOrWhiteSpace(lastNameFilter))
             query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+
+        filteredCount = await query.CountAsync();
 
         // Keyset: buscar a partir do cursor
         if (cursor.HasValue)
