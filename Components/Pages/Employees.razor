@@ -30,7 +30,7 @@
         <h3><b>Funcionários</b> - Banco de Dados PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
         <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
     </div>
-    <h5>Keyset Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
+    <h5>Deferred Join Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
 <QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
@@ -61,14 +61,14 @@
     </TemplateColumn>
 </QuickGrid>
 
-<!-- Paginador Keyset - INÍCIO -->
+<!-- Paginador Deferred Join - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
     <div>
         @if (employeesPage.Any())
         {
             <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
             <p/>
-            <span>Página <b>@currentPage</b></span>
+            <span>Página <b>@currentPage</b> de <b>@totalPages</b></span>
         }
         else
         {
@@ -78,12 +78,13 @@
     <div class="btn-group">
         <nav role="navigation" b-3qssc0bm46>
             <button class="go-first" title="Primeira página" @onclick="GoToFirstPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
-            &nbsp;
+            <button class="go-previous" title="Página anterior" @onclick="GoToPreviousPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
+            &nbsp;Pág. <b>@currentPage</b> de <b>@totalPages</b>&nbsp;
             <button class="go-next" title="Próxima página" @onclick="GoToNextPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
         </nav>
     </div>
 </div>
-<!-- Paginador Keyset - FIM -->
+<!-- Paginador Deferred Join - FIM -->
 
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
@@ -201,19 +202,17 @@
     private int totalCount = 0;
     private int filteredCount = 0;
 
-    // Keyset Pagination state
+    // Deferred Join Pagination state
     private List<Employee> employeesPage = new();
-    private int? lastId = null;
-    private bool hasMore = false;
-    private bool hasPreviousPage = false;
-    private Stack<(int? employeeId, int startOffset)> cursorHistory = new();
+    private int currentOffset = 0;
 
-    private int startPosition => Math.Min(
-        cursorHistory.Count * QTD_ITENS_PER_PAGE + 1,
-        filteredCount > 0 ? filteredCount : 1);
-
-    private int endPosition => Math.Min(startPosition + employeesPage.Count - 1, filteredCount);
-    private int currentPage => cursorHistory.Count + 1;
+    // Derived properties
+    private int currentPage => currentOffset / QTD_ITENS_PER_PAGE + 1;
+    private int totalPages => (int)Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE);
+    private int startPosition => filteredCount > 0 ? currentOffset + 1 : 0;
+    private int endPosition => Math.Min(currentOffset + employeesPage.Count, filteredCount);
+    private bool hasPreviousPage => currentOffset > 0;
+    private bool hasMore => currentOffset + QTD_ITENS_PER_PAGE < filteredCount;
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
 
@@ -233,10 +232,10 @@
     {
         using var context = DbContextFactory.CreateDbContext();
         totalCount = await context.Employees.CountAsync();
-        await LoadPageAsync(null);
+        await LoadPageAsync(0);
     }
 
-    private async Task LoadPageAsync(int? cursor)
+    private async Task LoadPageAsync(int offset)
     {
         using var context = DbContextFactory.CreateDbContext();
 
@@ -247,56 +246,56 @@
         // Aplicar filtros
         if (!string.IsNullOrWhiteSpace(firstNameFilter))
             query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
-        
-        filteredCount = await query.CountAsync();
-            
+
         if (!string.IsNullOrWhiteSpace(lastNameFilter))
             query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
 
         filteredCount = await query.CountAsync();
 
-        // Keyset: buscar a partir do cursor
-        if (cursor.HasValue)
-            query = query.Where(e => e.EmployeeID > cursor.Value);
-
-        // Busca N+1 para detectar se há próxima página
-        var page = await query
-            .Take(QTD_ITENS_PER_PAGE + 1)
+        // Deferred Join: Query 1 - buscar apenas IDs (covering index scan)
+        var ids = await query
+            .Select(e => e.EmployeeID)
+            .Skip(offset).Take(QTD_ITENS_PER_PAGE)
             .ToListAsync();
 
-        hasMore = page.Count > QTD_ITENS_PER_PAGE;
-        employeesPage = page.Take(QTD_ITENS_PER_PAGE).ToList();
-        lastId = employeesPage.LastOrDefault()?.EmployeeID;
+        // Deferred Join: Query 2 - buscar linhas completas para os IDs encontrados
+        employeesPage = await context.Employees
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.EmployeeID))
+            .OrderBy(e => e.EmployeeID)
+            .ToListAsync();
+
+        currentOffset = offset;
     }
 
     private async Task GoToFirstPageAsync()
     {
-        cursorHistory.Clear();
-        hasPreviousPage = false;
-        employeesPage = new();
-        filteredCount = totalCount;
-        await LoadPageAsync(null);
+        await LoadPageAsync(0);
     }
 
     private async Task GoToNextPageAsync()
     {
-        if (hasMore && lastId.HasValue)
-        {
-            int currentOffset = cursorHistory.Count * QTD_ITENS_PER_PAGE + employeesPage.Count;
-            cursorHistory.Push((lastId, currentOffset));
-            hasPreviousPage = true;
-            await LoadPageAsync(lastId);
-        }
+        if (hasMore)
+            await LoadPageAsync(currentOffset + QTD_ITENS_PER_PAGE);
+    }
+
+    private async Task GoToPreviousPageAsync()
+    {
+        if (hasPreviousPage)
+            await LoadPageAsync(Math.Max(0, currentOffset - QTD_ITENS_PER_PAGE));
+    }
+
+    private async Task GoToPageAsync(int pageNumber)
+    {
+        var offset = Math.Max(0, (pageNumber - 1) * QTD_ITENS_PER_PAGE);
+        var maxOffset = Math.Max(0, (int)(Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE) - 1) * QTD_ITENS_PER_PAGE);
+        offset = Math.Min(offset, maxOffset);
+        await LoadPageAsync(offset);
     }
 
     private async Task ApplyFilters()
     {
-        cursorHistory.Clear();
-        hasPreviousPage = false;
-        lastId = null;
-        employeesPage = new();
-        filteredCount = 0;
-        await LoadPageAsync(null);
+        await LoadPageAsync(0);
     }
 
     private void OpenModal()
@@ -374,9 +373,7 @@
 
         CloseModal();
         totalCount++;
-        await LoadPageAsync(null);
-        cursorHistory.Clear();
-        hasPreviousPage = false;
+        await LoadPageAsync(0);
         ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
     }
 
@@ -406,9 +403,7 @@
                 await context.SaveChangesAsync();
 
                 CloseModal();
-                await LoadPageAsync(null);
-                cursorHistory.Clear();
-                hasPreviousPage = false;
+                await LoadPageAsync(currentOffset);
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> alterado com sucesso!");
             }
         }
@@ -431,12 +426,17 @@
                 context.Employees.Remove(existing);
                 await context.SaveChangesAsync();
                 totalCount--;
+
+                // Ajustar offset se a página atual ficar vazia após exclusão
+                var newTotalPages = (int)Math.Ceiling((double)totalCount / QTD_ITENS_PER_PAGE);
+                var maxOffset = Math.Max(0, (newTotalPages - 1) * QTD_ITENS_PER_PAGE);
+                if (currentOffset > maxOffset)
+                    currentOffset = maxOffset;
+
                 ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
             }
 
-            await LoadPageAsync(null);
-            cursorHistory.Clear();
-            hasPreviousPage = false;
+            await LoadPageAsync(currentOffset);
         }
 
         showConfirmModal = false;
