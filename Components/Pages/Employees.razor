@@ -67,15 +67,15 @@
         @if (employeesPage.Any())
         {
             <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
-            <p/>
-            <span>Página <b>@currentPage</b> de <b>@totalPages</b></span>
+            @* <p/>
+            <span>Página <b>@currentPage</b> de <b>@totalPages</b></span> *@
         }
         else
         {
             <span>Nenhum registro encontrado</span>
         }
     </div>
-    <div class="d-flex align-items-center gap-2">
+    <div class="text-end">
         <div class="btn-group">
             <nav role="navigation" b-3qssc0bm46>
                 <button class="go-first" title="Primeira página" @onclick="GoToFirstPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
@@ -85,9 +85,9 @@
                 <button class="go-last" title="Última página" @onclick="GoToLastPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
             </nav>
         </div>
-        <div class="d-flex align-items-center gap-1">
+        <div class="d-flex align-items-center justify-content-end gap-1 mt-1">
             <label class="text-nowrap">Ir p/:</label>
-            <input type="number" min="1" max="@totalPages" @bind="pageInput" class="form-control form-control-sm" style="width: 55px;" />
+            <input type="number" min="1" max="@totalPages" @bind="pageInput" class="form-control form-control-sm" style="width: 75px;" />
             <button class="btn btn-outline-secondary btn-sm" @onclick="GoToInputPageAsync" disabled="@(totalPages == 0)">Ir</button>
         </div>
     </div>
