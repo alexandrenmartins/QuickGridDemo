@@ -66,7 +66,9 @@
     <div>
         @if (employeesPage.Any())
         {
-            <span>Mostrando <b>@employeesPage.First().EmployeeID</b> a <b>@employeesPage.Last().EmployeeID</b></span>
+            <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
+            <p/>
+            <span>Página <b>@currentPage</b></span>
         }
         else
         {
@@ -197,13 +199,21 @@
 
     private const int QTD_ITENS_PER_PAGE = 15;
     private int totalCount = 0;
+    private int filteredCount = 0;
 
     // Keyset Pagination state
     private List<Employee> employeesPage = new();
     private int? lastId = null;
     private bool hasMore = false;
     private bool hasPreviousPage = false;
-    private Stack<int?> cursorHistory = new();
+    private Stack<(int? employeeId, int startOffset)> cursorHistory = new();
+
+    private int startPosition => Math.Min(
+        cursorHistory.Count * QTD_ITENS_PER_PAGE + 1,
+        filteredCount > 0 ? filteredCount : 1);
+
+    private int endPosition => Math.Min(startPosition + employeesPage.Count - 1, filteredCount);
+    private int currentPage => cursorHistory.Count + 1;
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
 
@@ -237,8 +247,13 @@
         // Aplicar filtros
         if (!string.IsNullOrWhiteSpace(firstNameFilter))
             query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
+        
+        filteredCount = await query.CountAsync();
+            
         if (!string.IsNullOrWhiteSpace(lastNameFilter))
             query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+
+        filteredCount = await query.CountAsync();
 
         // Keyset: buscar a partir do cursor
         if (cursor.HasValue)
@@ -258,6 +273,8 @@
     {
         cursorHistory.Clear();
         hasPreviousPage = false;
+        employeesPage = new();
+        filteredCount = totalCount;
         await LoadPageAsync(null);
     }
 
@@ -265,7 +282,8 @@
     {
         if (hasMore && lastId.HasValue)
         {
-            cursorHistory.Push(lastId);
+            int currentOffset = cursorHistory.Count * QTD_ITENS_PER_PAGE + employeesPage.Count;
+            cursorHistory.Push((lastId, currentOffset));
             hasPreviousPage = true;
             await LoadPageAsync(lastId);
         }
@@ -276,6 +294,8 @@
         cursorHistory.Clear();
         hasPreviousPage = false;
         lastId = null;
+        employeesPage = new();
+        filteredCount = 0;
         await LoadPageAsync(null);
     }
 
