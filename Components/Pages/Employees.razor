@@ -81,6 +81,7 @@
             <button class="go-previous" title="Página anterior" @onclick="GoToPreviousPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
             &nbsp;Pág. <b>@currentPage</b> de <b>@totalPages</b>&nbsp;
             <button class="go-next" title="Próxima página" @onclick="GoToNextPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
+            <button class="go-last" title="Última página" @onclick="GoToLastPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
         </nav>
     </div>
 </div>
@@ -277,6 +278,12 @@
     {
         if (hasMore)
             await LoadPageAsync(currentOffset + QTD_ITENS_PER_PAGE);
+    }
+
+    private async Task GoToLastPageAsync()
+    {
+        var lastPageOffset = Math.Max(0, (totalPages - 1) * QTD_ITENS_PER_PAGE);
+        await LoadPageAsync(lastPageOffset);
     }
 
     private async Task GoToPreviousPageAsync()
