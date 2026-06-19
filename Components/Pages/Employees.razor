@@ -35,7 +35,7 @@
 
 <QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
     <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true">
+    <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Class="width-treze-perc">
         <ColumnOptions>
             <div class="d-flex gap-1">
                 <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Nome..." autofocus />
@@ -55,7 +55,7 @@
     <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.Country)" Title="País"></PropertyColumn>
     <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone"></PropertyColumn>
-    <TemplateColumn Title="Ações">
+    <TemplateColumn Title="Ações" Class="width-dez-perc">
         <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context)">Editar</button>
         <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
     </TemplateColumn>
