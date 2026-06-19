@@ -99,6 +99,27 @@ var page = await context.Employees
 
 **Full implementation**: See `docs/deferred-join-implementation.md` or `.opencode/skills/deferred-join.md`
 
+## Scroll Container com Sidebar
+
+Para adicionar scroll horizontal em uma página Blazor que possui sidebar (menu lateral), use `width: 0; min-width: 100%` no container — **não** `max-width: 100%` (que causa overflow no layout flex do `.page`).
+
+```css
+.grid-scroll-container {
+    overflow: auto;
+    width: 0;
+    min-width: 100%;
+}
+
+.grid-scroll-container table td,
+.grid-scroll-container table th {
+    white-space: nowrap;
+}
+```
+
+**Por que funciona**: O `<div class="grid-scroll-container">` fica dentro de `@Body` (que é `article.content`). O sidebar está fora de `@Body` no `MainLayout.razor` (é irmão de `main`), então o scroll não o afeta.
+
+**Full implementation**: See `.opencode/skills/scroll-container-sidebar.md`
+
 ## Conventions
 
 - UI strings are in **Portuguese (Brazilian)**

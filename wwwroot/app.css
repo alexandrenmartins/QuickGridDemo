@@ -66,3 +66,14 @@ h1:focus {
 .width-treze-perc {
     width: 13%;
 }
+
+.grid-scroll-container {
+    overflow: auto;
+    width: 0;
+    min-width: 100%;
+}
+
+.grid-scroll-container table td,
+.grid-scroll-container table th {
+    white-space: nowrap;
+}

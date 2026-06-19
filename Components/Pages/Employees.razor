@@ -33,6 +33,7 @@
     <h5>Deferred Join Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
 </div>
 
+<div class="grid-scroll-container">
 <QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
     <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true"></PropertyColumn>
     <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Class="width-treze-perc">
@@ -67,8 +68,6 @@
         @if (employeesPage.Any())
         {
             <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
-            @* <p/>
-            <span>Página <b>@currentPage</b> de <b>@totalPages</b></span> *@
         }
         else
         {
@@ -93,6 +92,7 @@
     </div>
 </div>
 <!-- Paginador Deferred Join - FIM -->
+</div>
 
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
