@@ -245,20 +245,26 @@
         await LoadPageAsync(0);
     }
 
-    private async Task LoadPageAsync(int? cursorId = null)
+    private IQueryable<Employee> BuildFilteredQuery(ApplicationDbContextPostgreSql context)
     {
-        using var context = DbContextFactory.CreateDbContext();
-
         IQueryable<Employee> query = context.Employees
             .AsNoTracking()
             .OrderBy(e => e.EmployeeID);
 
-        // Aplicar filtros
         if (!string.IsNullOrWhiteSpace(firstNameFilter))
             query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
 
         if (!string.IsNullOrWhiteSpace(lastNameFilter))
             query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+
+        return query;
+    }
+
+    private async Task LoadPageAsync(int? cursorId = null)
+    {
+        using var context = DbContextFactory.CreateDbContext();
+
+        IQueryable<Employee> query = BuildFilteredQuery(context);
 
         filteredCount = await query.CountAsync();
 
@@ -310,15 +316,7 @@
         // Mantido como scan completo — usa OFFSET implícito via subquery.
         using var context = DbContextFactory.CreateDbContext();
 
-        IQueryable<Employee> query = context.Employees
-            .AsNoTracking()
-            .OrderBy(e => e.EmployeeID);
-
-        if (!string.IsNullOrWhiteSpace(firstNameFilter))
-            query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
-
-        if (!string.IsNullOrWhiteSpace(lastNameFilter))
-            query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+        IQueryable<Employee> query = BuildFilteredQuery(context);
 
         var total = await query.CountAsync();
         var totalPagesCalc = (int)Math.Ceiling((double)total / QTD_ITENS_PER_PAGE);
@@ -368,11 +366,34 @@
 
     private async Task GoToPreviousPageAsync()
     {
+        if (currentPage <= 1) return;
+
         if (cursorHistory.Count > 0)
         {
             var previousCursor = cursorHistory.Pop();
             currentPage--;
             await LoadPageAsync(previousCursor);
+        }
+        else
+        {
+            // Pilha vazia (ex: veio de GoToLastPage) — buscar cursor sob demanda
+            using var context = DbContextFactory.CreateDbContext();
+            IQueryable<Employee> query = BuildFilteredQuery(context);
+
+            int prevPageOffset = Math.Max(0, (currentPage - 2) * QTD_ITENS_PER_PAGE);
+
+            int? cursor;
+            if (prevPageOffset == 0)
+                cursor = null;
+            else
+                cursor = await query
+                    .Select(e => e.EmployeeID)
+                    .Skip(prevPageOffset - 1)
+                    .Take(1)
+                    .FirstOrDefaultAsync();
+
+            currentPage--;
+            await LoadPageAsync(cursor);
         }
     }
 
