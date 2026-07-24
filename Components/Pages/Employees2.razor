@@ -1,0 +1,495 @@
+@page "/employees2"
+
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using QuickGridDemo.Data
+@using QuickGridDemo.Models
+
+@inject IDbContextFactory<ApplicationDbContextPostgreSql> DbContextFactory
+
+<PageTitle>QuickGridDemo - Funcionários</PageTitle>
+
+<!-- Toast de sucesso -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    @if (showToast)
+    {
+        <div class="toast show align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    @((MarkupString)toastMessage)
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="HideToast"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="mt-2 d-flex justify-content-between align-items-baseline">
+    <div class="d-flex align-items-center gap-3">
+        <h3><b>Funcionários</b> - Banco de Dados PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
+        <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
+    </div>
+    <h5>Deferred Join Pagination - @QTD_ITENS_PER_PAGE itens por página</h5>
+</div>
+
+<div class="grid-scroll-container">
+<QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
+    <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Class="width-treze-perc">
+        <ColumnOptions>
+            <div class="d-flex gap-1">
+                <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Nome..." autofocus />
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
+            </div>
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true">
+        <ColumnOptions>
+            <div class="d-flex gap-1">
+                <input type="search" @bind="lastNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Sobrenome..." autofocus />
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
+            </div>
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="@(x => x.Title)" Title="Cargo"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.Country)" Title="País"></PropertyColumn>
+    <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone"></PropertyColumn>
+    <TemplateColumn Title="Ações" Class="width-dez-perc">
+        <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context)">Editar</button>
+        <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
+    </TemplateColumn>
+</QuickGrid>
+
+<!-- Paginador Deferred Join - INÍCIO -->
+<div class="d-flex justify-content-between align-items-center mt-2">
+    <div>
+        @if (employeesPage.Any())
+        {
+            <span>Mostrando <b>@startPosition</b> a <b>@endPosition</b> de <b>@filteredCount</b> registros</span>
+        }
+        else
+        {
+            <span>Nenhum registro encontrado</span>
+        }
+    </div>
+    <div class="text-end">
+        <div class="btn-group">
+            <nav role="navigation" b-3qssc0bm46>
+                <button class="go-first" title="Primeira página" @onclick="GoToFirstPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
+                <button class="go-previous" title="Página anterior" @onclick="GoToPreviousPageAsync" disabled="@(!hasPreviousPage)" b-3qssc0bm46></button>
+                &nbsp;Pág. <b>@currentPage</b> de <b>@totalPages</b>&nbsp;
+                <button class="go-next" title="Próxima página" @onclick="GoToNextPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
+                <button class="go-last" title="Última página" @onclick="GoToLastPageAsync" disabled="@(!hasMore)" b-3qssc0bm46></button>
+            </nav>
+        </div>
+        <div class="d-flex align-items-center justify-content-end gap-1 mt-1">
+            <label class="text-nowrap">Ir p/:</label>
+            <input type="number" min="1" max="@totalPages" @bind="pageInput" class="form-control form-control-sm" style="width: 75px;" />
+            <button class="btn btn-outline-secondary btn-sm" @onclick="GoToInputPageAsync" disabled="@(totalPages == 0)">Ir</button>
+        </div>
+    </div>
+</div>
+<!-- Paginador Deferred Join - FIM -->
+</div>
+
+<!-- Modal de Cadastro/Edição -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? "Editar Funcionário" : "Novo Funcionário")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="employeeModel" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" role="alert" />
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Nome <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="employeeModel.FirstName" />
+                                <ValidationMessage For="() => employeeModel.FirstName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sobrenome <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="employeeModel.LastName" />
+                                <ValidationMessage For="() => employeeModel.LastName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cargo</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Title" />
+                                <ValidationMessage For="() => employeeModel.Title" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tratamento</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.TitleOfCourtesy" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data Nascimento</label>
+                                <InputDate class="form-control" @bind-Value="employeeModel.BirthDate" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data Admissão</label>
+                                <InputDate class="form-control" @bind-Value="employeeModel.HireDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Endereço</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Address" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Cidade</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.City" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Região</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Region" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">CEP</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.PostalCode" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">País</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Country" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Telefone</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.HomePhone" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ramal</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Extension" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <InputTextArea class="form-control" @bind-Value="employeeModel.Notes" rows="3" />
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-3">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn @(isEditing ? "btn-success" : "btn-primary")">
+                                @(isEditing ? "Salvar" : "Cadastrar")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Deseja realmente excluir o funcionário <b>@employeeToDelete?.FirstName @employeeToDelete?.LastName</b>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    private const int QTD_ITENS_PER_PAGE = 15;
+    private int totalCount = 0;
+    private int filteredCount = 0;
+
+    // Deferred Join Pagination state
+    private List<Employee> employeesPage = new();
+    private int currentOffset = 0;
+
+    // Derived properties
+    private int currentPage => currentOffset / QTD_ITENS_PER_PAGE + 1;
+    private int totalPages => (int)Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE);
+    private int startPosition => filteredCount > 0 ? currentOffset + 1 : 0;
+    private int endPosition => Math.Min(currentOffset + employeesPage.Count, filteredCount);
+    private bool hasPreviousPage => currentOffset > 0;
+    private bool hasMore => currentOffset + QTD_ITENS_PER_PAGE < filteredCount;
+
+    private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
+    private int pageInput = 1;
+
+    private bool showModal = false;
+    private bool isEditing = false;
+    private Employee? employeeToEdit;
+    private Employee employeeModel = new();
+
+    private bool showConfirmModal = false;
+    private Employee? employeeToDelete;
+
+    private bool showToast = false;
+    private string toastMessage = string.Empty;
+    private CancellationTokenSource? toastCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        totalCount = await context.Employees.CountAsync();
+        await LoadPageAsync(0);
+    }
+
+    private async Task LoadPageAsync(int offset)
+    {
+        using var context = DbContextFactory.CreateDbContext();
+
+        IQueryable<Employee> query = context.Employees
+            .AsNoTracking()
+            .OrderBy(e => e.EmployeeID);
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(firstNameFilter))
+            query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
+
+        if (!string.IsNullOrWhiteSpace(lastNameFilter))
+            query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
+
+        filteredCount = await query.CountAsync();
+
+        // Deferred Join: Query 1 - buscar apenas IDs (covering index scan)
+        var ids = await query
+            .Select(e => e.EmployeeID)
+            .Skip(offset).Take(QTD_ITENS_PER_PAGE)
+            .ToListAsync();
+
+        // Deferred Join: Query 2 - buscar linhas completas para os IDs encontrados
+        employeesPage = await context.Employees
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.EmployeeID))
+            .OrderBy(e => e.EmployeeID)
+            .ToListAsync();
+
+        currentOffset = offset;
+    }
+
+    private async Task GoToFirstPageAsync()
+    {
+        await LoadPageAsync(0);
+    }
+
+    private async Task GoToNextPageAsync()
+    {
+        if (hasMore)
+            await LoadPageAsync(currentOffset + QTD_ITENS_PER_PAGE);
+    }
+
+    private async Task GoToLastPageAsync()
+    {
+        var lastPageOffset = Math.Max(0, (totalPages - 1) * QTD_ITENS_PER_PAGE);
+        await LoadPageAsync(lastPageOffset);
+    }
+
+    private async Task GoToPreviousPageAsync()
+    {
+        if (hasPreviousPage)
+            await LoadPageAsync(Math.Max(0, currentOffset - QTD_ITENS_PER_PAGE));
+    }
+
+    private async Task GoToPageAsync(int pageNumber)
+    {
+        var offset = Math.Max(0, (pageNumber - 1) * QTD_ITENS_PER_PAGE);
+        var maxOffset = Math.Max(0, (int)(Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE) - 1) * QTD_ITENS_PER_PAGE);
+        offset = Math.Min(offset, maxOffset);
+        await LoadPageAsync(offset);
+    }
+
+    private async Task GoToInputPageAsync()
+    {
+        pageInput = Math.Clamp(pageInput, 1, totalPages);
+        await GoToPageAsync(pageInput);
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadPageAsync(0);
+    }
+
+    private void OpenModal()
+    {
+        isEditing = false;
+        employeeToEdit = null;
+        employeeModel = new Employee();
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        isEditing = false;
+        employeeToEdit = null;
+        employeeModel = new Employee();
+    }
+
+    private void EditEmployee(Employee employee)
+    {
+        isEditing = true;
+        employeeToEdit = employee;
+        employeeModel = new Employee
+        {
+            EmployeeID = employee.EmployeeID,
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            Title = employee.Title,
+            TitleOfCourtesy = employee.TitleOfCourtesy,
+            BirthDate = employee.BirthDate,
+            HireDate = employee.HireDate,
+            Address = employee.Address,
+            City = employee.City,
+            Region = employee.Region,
+            PostalCode = employee.PostalCode,
+            Country = employee.Country,
+            HomePhone = employee.HomePhone,
+            Extension = employee.Extension,
+            Notes = employee.Notes
+        };
+        showModal = true;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isEditing)
+            await UpdateEmployee();
+        else
+            await AddEmployee();
+    }
+
+    private async Task AddEmployee()
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        var newEmployee = new Employee
+        {
+            FirstName = employeeModel.FirstName,
+            LastName = employeeModel.LastName,
+            Title = employeeModel.Title,
+            TitleOfCourtesy = employeeModel.TitleOfCourtesy,
+            BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null,
+            HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null,
+            Address = employeeModel.Address,
+            City = employeeModel.City,
+            Region = employeeModel.Region,
+            PostalCode = employeeModel.PostalCode,
+            Country = employeeModel.Country,
+            HomePhone = employeeModel.HomePhone,
+            Extension = employeeModel.Extension,
+            Notes = employeeModel.Notes
+        };
+
+        context.Employees.Add(newEmployee);
+        await context.SaveChangesAsync();
+
+        CloseModal();
+        totalCount++;
+        await LoadPageAsync(0);
+        ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
+    }
+
+    private async Task UpdateEmployee()
+    {
+        if (employeeToEdit is not null)
+        {
+            using var context = DbContextFactory.CreateDbContext();
+            var existing = await context.Employees.FindAsync(employeeToEdit.EmployeeID);
+            if (existing is not null)
+            {
+                existing.FirstName = employeeModel.FirstName;
+                existing.LastName = employeeModel.LastName;
+                existing.Title = employeeModel.Title;
+                existing.TitleOfCourtesy = employeeModel.TitleOfCourtesy;
+                existing.BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null;
+                existing.HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null;
+                existing.Address = employeeModel.Address;
+                existing.City = employeeModel.City;
+                existing.Region = employeeModel.Region;
+                existing.PostalCode = employeeModel.PostalCode;
+                existing.Country = employeeModel.Country;
+                existing.HomePhone = employeeModel.HomePhone;
+                existing.Extension = employeeModel.Extension;
+                existing.Notes = employeeModel.Notes;
+
+                await context.SaveChangesAsync();
+
+                CloseModal();
+                await LoadPageAsync(currentOffset);
+                ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> alterado com sucesso!");
+            }
+        }
+    }
+
+    private void RequestDelete(Employee employee)
+    {
+        employeeToDelete = employee;
+        showConfirmModal = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (employeeToDelete is not null)
+        {
+            using var context = DbContextFactory.CreateDbContext();
+            var existing = await context.Employees.FindAsync(employeeToDelete.EmployeeID);
+            if (existing is not null)
+            {
+                context.Employees.Remove(existing);
+                await context.SaveChangesAsync();
+                totalCount--;
+
+                // Ajustar offset se a página atual ficar vazia após exclusão
+                var newTotalPages = (int)Math.Ceiling((double)totalCount / QTD_ITENS_PER_PAGE);
+                var maxOffset = Math.Max(0, (newTotalPages - 1) * QTD_ITENS_PER_PAGE);
+                if (currentOffset > maxOffset)
+                    currentOffset = maxOffset;
+
+                ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
+            }
+
+            await LoadPageAsync(currentOffset);
+        }
+
+        showConfirmModal = false;
+        employeeToDelete = null;
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        employeeToDelete = null;
+    }
+
+    private async void ShowToast(string message)
+    {
+        toastCts?.Cancel();
+        toastMessage = message;
+        showToast = true;
+        StateHasChanged();
+
+        toastCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(3000, toastCts.Token);
+            showToast = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void HideToast()
+    {
+        toastCts?.Cancel();
+        showToast = false;
+    }
+}
