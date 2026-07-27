@@ -1,6 +1,7 @@
 @page "/employees3"
 
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Diagnostics
 @using Microsoft.EntityFrameworkCore
 @using QuickGridDemo.Data
 @using QuickGridDemo.Models
@@ -93,6 +94,42 @@
 </div>
 <!-- Paginador Deferred Join - FIM -->
 </div>
+
+<!-- Performance Monitor -->
+<div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #f8f9fa;">
+    <b>Desempenho:</b>
+    Query CTE: @query1Ms ms (@query1Rows linhas) |
+    Total: @totalMs ms
+</div>
+
+<!-- SQL Exibido -->
+<details class="mt-1">
+    <summary style="font-size: 0.7rem; cursor: pointer; color: #6c757d;">SQL Gerado <span style="font-size: 0.6rem;">(expandir)</span></summary>
+    <div class="mt-1 p-1" style="background-color: #e9ecef; border-radius: 3px;">
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Query CTE:</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@query1Sql</pre>
+    </div>
+</details>
+
+@if (lastPageQuery1Ms > 0)
+{
+    <div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #fff3cd;">
+        <b>GoToLastPageAsync:</b>
+        Query CTE: @lastPageQuery1Ms ms (@lastPageQuery1Rows linhas) |
+        Cursor: @lastPageCursorMs ms |
+        Total: @lastPageTotalMs ms
+    </div>
+
+    <details class="mt-1">
+        <summary style="font-size: 0.7rem; cursor: pointer; color: #856404;">SQL GoToLastPageAsync <span style="font-size: 0.6rem;">(expandir)</span></summary>
+        <div class="mt-1 p-1" style="background-color: #fffbe8; border-radius: 3px;">
+            <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Query CTE (offset):</div>
+            <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0 0 6px 0; white-space: pre-wrap; padding: 4px; border-radius: 2px;">@lastPageQuery1Sql</pre>
+            <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Cursor:</div>
+            <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; padding: 4px; border-radius: 2px;">@lastPageCursorSql</pre>
+        </div>
+    </details>
+}
 
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
@@ -217,6 +254,18 @@
     private bool hasMore = false;
     private Stack<int?> cursorHistory = new();
 
+    // Performance tracking
+    private long query1Ms;
+    private int query1Rows;
+    private long totalMs;
+    private string? query1Sql;
+    private long lastPageQuery1Ms;
+    private int lastPageQuery1Rows;
+    private long lastPageCursorMs;
+    private long lastPageTotalMs;
+    private string? lastPageQuery1Sql;
+    private string? lastPageCursorSql;
+
     // Derived properties
     private int totalPages => (int)Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE);
     private int startPosition => filteredCount > 0 ? ((currentPage - 1) * QTD_ITENS_PER_PAGE) + 1 : 0;
@@ -301,10 +350,17 @@
 
         parameters.Add(QTD_ITENS_PER_PAGE + 1);
 
+        query1Sql = sql;
+
+        var sw = Stopwatch.StartNew();
         employeesPage = await context.Employees
             .FromSqlRaw(sql, parameters.ToArray())
             .AsNoTracking()
             .ToListAsync();
+        sw.Stop();
+        query1Ms = sw.ElapsedMilliseconds;
+        query1Rows = employeesPage.Count;
+        totalMs = query1Ms;
 
         hasMore = employeesPage.Count > QTD_ITENS_PER_PAGE;
         if (hasMore)
@@ -373,19 +429,33 @@
         parameters.Add(QTD_ITENS_PER_PAGE);
         parameters.Add(lastPageOffset);
 
+        lastPageQuery1Sql = sql;
+
+        var sw = Stopwatch.StartNew();
         employeesPage = await context.Employees
             .FromSqlRaw(sql, parameters.ToArray())
             .AsNoTracking()
             .ToListAsync();
+        sw.Stop();
+        lastPageQuery1Ms = sw.ElapsedMilliseconds;
+        lastPageQuery1Rows = employeesPage.Count;
 
         currentPage = totalPagesCalc;
 
         // currentCursorId: o cursor que teria carregado esta página no fluxo normal
+        var cursorIdQuery = query.Select(e => e.EmployeeID).Skip(lastPageOffset - 1).Take(1);
+        lastPageCursorSql = lastPageOffset > 0 ? cursorIdQuery.ToQueryString() : null;
+
+        sw.Restart();
         currentCursorId = lastPageOffset > 0
-            ? await query.Select(e => e.EmployeeID).Skip(lastPageOffset - 1).Take(1).FirstOrDefaultAsync()
+            ? await cursorIdQuery.FirstOrDefaultAsync()
             : null;
+        sw.Stop();
+        lastPageCursorMs = sw.ElapsedMilliseconds;
 
         hasMore = false;
+
+        lastPageTotalMs = lastPageQuery1Ms + lastPageCursorMs;
 
         // Preservar histórico: empilhar o cursor da penúltima página
         cursorHistory.Clear();
