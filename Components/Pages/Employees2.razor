@@ -221,7 +221,7 @@
     private int totalPages => (int)Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE);
     private int startPosition => filteredCount > 0 ? ((currentPage - 1) * QTD_ITENS_PER_PAGE) + 1 : 0;
     private int endPosition => Math.Min(currentPage * QTD_ITENS_PER_PAGE, filteredCount);
-    private bool hasPreviousPage => cursorHistory.Count > 0;
+    private bool hasPreviousPage => currentPage > 1;
 
     private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
     private int pageInput = 1;
@@ -376,24 +376,30 @@
         }
         else
         {
-            // Pilha vazia (ex: veio de GoToLastPage) — buscar cursor sob demanda
+            // Pilha vazia (ex: veio de GoToLastPage) — reconstruir cursorHistory com UMA única consulta
             using var context = DbContextFactory.CreateDbContext();
             IQueryable<Employee> query = BuildFilteredQuery(context);
 
-            int prevPageOffset = Math.Max(0, (currentPage - 2) * QTD_ITENS_PER_PAGE);
+            int totalIdsNeeded = (currentPage - 1) * QTD_ITENS_PER_PAGE;
+            var allIds = await query
+                .Select(e => e.EmployeeID)
+                .Take(totalIdsNeeded)
+                .ToListAsync();
 
-            int? cursor;
-            if (prevPageOffset == 0)
-                cursor = null;
-            else
-                cursor = await query
-                    .Select(e => e.EmployeeID)
-                    .Skip(prevPageOffset - 1)
-                    .Take(1)
-                    .FirstOrDefaultAsync();
+            // null = cursor da pág 1; allIds[p*T-1] = cursor da pág (p+1)
+            cursorHistory.Push(null);
+            for (int p = 2; p < currentPage; p++)
+            {
+                int lastIndexOnPage = p * QTD_ITENS_PER_PAGE - 1;
+                if (lastIndexOnPage < allIds.Count)
+                    cursorHistory.Push(allIds[lastIndexOnPage]);
+                else
+                    break;
+            }
 
+            var previousCursor = cursorHistory.Pop();
             currentPage--;
-            await LoadPageAsync(cursor);
+            await LoadPageAsync(previousCursor);
         }
     }
 
