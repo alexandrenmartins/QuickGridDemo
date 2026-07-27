@@ -22,7 +22,7 @@ public static class SeedData
         return faker.Generate(count);
     }
 
-    public static List<Employee> GenerateEmployees(int count = 10_000)
+    public static List<Employee> GenerateEmployees(int count = 50_000)
     {
         var faker = new Faker<Employee>("pt_BR")
             .RuleFor(e => e.FirstName, f => f.Person.FirstName)

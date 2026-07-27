@@ -58,9 +58,9 @@ namespace QuickGridDemo
                 context.Database.Migrate();
 
                 // Seed: adicionar 10.000 registros na tabela Employees
-                if (!context.Employees.Any())
+                //if (!context.Employees.Any())
                 {
-                    var employees = SeedData.GenerateEmployees(10_000);
+                    var employees = SeedData.GenerateEmployees(100_000);
                     context.Employees.AddRange(employees);
                     context.SaveChanges();
                 }
