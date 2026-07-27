@@ -388,7 +388,7 @@
 
             // null = cursor da pág 1; allIds[p*T-1] = cursor da pág (p+1)
             cursorHistory.Push(null);
-            for (int p = 2; p < currentPage; p++)
+            for (int p = 1; p < currentPage - 1; p++)
             {
                 int lastIndexOnPage = p * QTD_ITENS_PER_PAGE - 1;
                 if (lastIndexOnPage < allIds.Count)
