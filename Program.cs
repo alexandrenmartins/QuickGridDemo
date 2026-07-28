@@ -1,6 +1,7 @@
 using QuickGridDemo.Components;
 using QuickGridDemo.Data;
 using Microsoft.EntityFrameworkCore;
+using Syncfusion.Blazor;
 
 //Example from Code Skwela
 namespace QuickGridDemo
@@ -30,6 +31,7 @@ namespace QuickGridDemo
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSqlConnection")));
 
             builder.Services.AddHttpClient();
+            builder.Services.AddSyncfusionBlazor();
 
             var app = builder.Build();
 

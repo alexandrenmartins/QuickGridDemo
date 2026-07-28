@@ -27,6 +27,8 @@
     <PackageReference Include="NuGet.Packaging" Version="7.6.0" />
     <PackageReference Include="NuGet.Protocol" Version="7.6.0" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12-pre20260709125052" />
+    <PackageReference Include="Syncfusion.Blazor.Grid" Version="34.1.33" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="34.1.33" />
   </ItemGroup>
 
 </Project>
