@@ -1,5 +1,6 @@
 @page "/employees"
 
+@using System.Diagnostics
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.EntityFrameworkCore
 @using QuickGridDemo.Data
@@ -93,6 +94,25 @@
 </div>
 <!-- Paginador Deferred Join - FIM -->
 </div>
+
+<!-- Performance Monitor -->
+<div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #f8f9fa;">
+    <b>Desempenho:</b>
+    Query IDs: @query1Ms ms (@query1Rows linhas) |
+    Query Dados: @query2Ms ms (@query2Rows linhas) |
+    Total: @totalMs ms
+</div>
+
+<!-- SQL Exibido -->
+<details class="mt-1">
+    <summary style="font-size: 0.7rem; cursor: pointer; color: #6c757d;">SQL Gerado <span style="font-size: 0.6rem;">(expandir)</span></summary>
+    <div class="mt-1 p-1" style="background-color: #e9ecef; border-radius: 3px;">
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Query IDs:</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0 0 6px 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@query1Sql</pre>
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Query Dados:</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@query2Sql</pre>
+    </div>
+</details>
 
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
@@ -214,6 +234,15 @@
     private List<Employee> employeesPage = new();
     private int currentOffset = 0;
 
+    // Performance tracking
+    private long query1Ms;
+    private int query1Rows;
+    private long query2Ms;
+    private int query2Rows;
+    private long totalMs;
+    private string? query1Sql;
+    private string? query2Sql;
+
     // Derived properties
     private int currentPage => currentOffset / QTD_ITENS_PER_PAGE + 1;
     private int totalPages => (int)Math.Ceiling((double)filteredCount / QTD_ITENS_PER_PAGE);
@@ -261,18 +290,30 @@
 
         filteredCount = await query.CountAsync();
 
-        // Deferred Join: Query 1 - buscar apenas IDs (covering index scan)
-        var ids = await query
+        var idsQuery = query
             .Select(e => e.EmployeeID)
-            .Skip(offset).Take(QTD_ITENS_PER_PAGE)
-            .ToListAsync();
+            .Skip(offset).Take(QTD_ITENS_PER_PAGE);
+        query1Sql = idsQuery.ToQueryString();
 
-        // Deferred Join: Query 2 - buscar linhas completas para os IDs encontrados
-        employeesPage = await context.Employees
+        var sw = Stopwatch.StartNew();
+        var ids = await idsQuery.ToListAsync();
+        sw.Stop();
+        query1Ms = sw.ElapsedMilliseconds;
+        query1Rows = ids.Count;
+
+        var entitiesQuery = context.Employees
             .AsNoTracking()
             .Where(e => ids.Contains(e.EmployeeID))
-            .OrderBy(e => e.EmployeeID)
-            .ToListAsync();
+            .OrderBy(e => e.EmployeeID);
+        query2Sql = entitiesQuery.ToQueryString();
+
+        sw.Restart();
+        employeesPage = await entitiesQuery.ToListAsync();
+        sw.Stop();
+        query2Ms = sw.ElapsedMilliseconds;
+        query2Rows = employeesPage.Count;
+
+        totalMs = query1Ms + query2Ms;
 
         currentOffset = offset;
     }
