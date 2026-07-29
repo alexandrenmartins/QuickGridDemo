@@ -76,4 +76,18 @@ h1:focus {
 .grid-scroll-container table td,
 .grid-scroll-container table th {
     white-space: nowrap;
+    padding: 2px 8px !important;
 }
+
+.grid-scroll-container .mud-table th {
+    font-weight: 700 !important;
+}
+
+.grid-scroll-container .filter-header-cell .mud-input input {
+    color: #1565c0 !important;
+}
+
+.grid-scroll-container .filter-header-cell .mud-input input::placeholder {
+    color: rgba(0, 0, 0, 0.38) !important;
+}
+
