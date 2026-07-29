@@ -42,6 +42,16 @@
              SortMode="SortMode.Single" Dense="true"
              RowsPerPage="15">
     <Columns>
+        <TemplateColumn Title="Ações">
+            <CellTemplate>
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@(Icons.Material.Filled.Edit)" Size="Size.Small" Color="Color.Primary" @onclick="() => EditEmployee(context.Item)" />
+                </MudTooltip>
+                <MudTooltip Text="Excluir">
+                    <MudIconButton Icon="@(Icons.Material.Filled.Delete)" Size="Size.Small" Color="Color.Error" @onclick="() => RequestDelete(context.Item)" />
+                </MudTooltip>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true" Filterable="true" />
         <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Filterable="true" />
         <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true" Filterable="true" />
@@ -49,12 +59,6 @@
         <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true" Filterable="true" />
         <PropertyColumn Property="@(x => x.Country)" Title="País" Filterable="true" />
         <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone" Filterable="true" />
-        <TemplateColumn Title="Ações">
-            <CellTemplate>
-                <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context.Item)">Editar</button>
-                <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context.Item)">Excluir</button>
-            </CellTemplate>
-        </TemplateColumn>
     </Columns>
     <PagerContent>
         <MudDataGridPager T="Employee" />
