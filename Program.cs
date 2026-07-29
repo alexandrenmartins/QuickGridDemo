@@ -1,4 +1,5 @@
 using QuickGridDemo.Components;
+using QuickGridDemo.Components.Pages;
 using QuickGridDemo.Data;
 using Microsoft.EntityFrameworkCore;
 using Syncfusion.Blazor;
@@ -32,6 +33,7 @@ namespace QuickGridDemo
 
             builder.Services.AddHttpClient();
             builder.Services.AddSyncfusionBlazor();
+            builder.Services.AddScoped<Employees4Adaptor>();
 
             var app = builder.Build();
 
