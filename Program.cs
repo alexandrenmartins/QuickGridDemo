@@ -34,6 +34,7 @@ namespace QuickGridDemo
             builder.Services.AddHttpClient();
             builder.Services.AddSyncfusionBlazor();
             builder.Services.AddScoped<Employees4Adaptor>();
+            builder.Services.AddScoped<SqlCaptureService>();
 
             var app = builder.Build();
 

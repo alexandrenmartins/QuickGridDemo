@@ -9,6 +9,7 @@
 @using QuickGridDemo.Models
 
 @inject IDbContextFactory<ApplicationDbContextPostgreSql> DbContextFactory
+@inject SqlCaptureService SqlCapture
 <PageTitle>QuickGridDemo - Funcionários 4</PageTitle>
 
 <!-- Toast de sucesso -->
@@ -32,7 +33,7 @@
         <h3><b>Funcionários 4</b> - Syncfusion DataGrid + PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
         <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
     </div>
-    <h5>CTE + Deferred Join (CustomAdaptor) - 15 itens/página</h5>
+    <h5>Keyset Pagination + Deferred Join (CustomAdaptor) - 15 itens/página</h5>
 </div>
 
 <div class="mb-2 d-flex gap-2 align-items-center">
@@ -69,25 +70,30 @@
 <!-- Performance Monitor -->
 <div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #f8f9fa;">
     <b>Desempenho:</b>
-    Query BD: @lastQueryMs ms (@lastQueryRows linhas) |
-    @if (lastQueryMs == 0 && lastGridTicks > 0)
-    {
-        <span>Dados do cache | </span>
-    }
+    IDs: @SqlCapture.IdsQueryMs ms (@SqlCapture.IdsQueryRows linhas) |
+    Dados: @SqlCapture.DataQueryMs ms |
     Total: @lastTotalMs ms
+    @if (SqlCapture.Strategy == "cache-hit (re-sort in-memory)")
+    {
+        <span>| Dados do cache</span>
+    }
 </div>
 
-<!-- Debug 
-<div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #fff3cd;">
-    <b>Debug:</b> @_debugMsg | Eventos: @_eventCount
-</div>
--->
 <!-- SQL Gerado -->
 <details class="mt-1">
-    <summary style="font-size: 0.7rem; cursor: pointer; color: #6c757d;">SQL Gerado <span style="font-size: 0.6rem;">(expandir)</span></summary>
+    <summary style="font-size: 0.7rem; cursor: pointer; color: #6c757d;">
+        SQL Gerado <span style="font-size: 0.6rem;">(@SqlCapture.Strategy)</span>
+    </summary>
     <div class="mt-1 p-1" style="background-color: #e9ecef; border-radius: 3px;">
-        <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Subquery IDs (Deferred Join):</div>
-        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@lastQuerySql</pre>
+        @if (SqlCapture.CursorLookupSql is not null)
+        {
+            <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Cursor Lookup:</div>
+            <pre style="max-height: 100px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.CursorLookupSql</pre>
+        }
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600; @(SqlCapture.CursorLookupSql is not null ? "margin-top: 4px;" : "")">IDs Query (Keyset):</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.IdsQuerySql</pre>
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600; margin-top: 4px;">Data Query (Deferred Join):</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.DataQuerySql</pre>
     </div>
 </details>
 
@@ -210,13 +216,8 @@
 
     // Performance tracking via grid events
     private Stopwatch perfTimer = new();
-    private long lastQueryMs;
-    private int lastQueryRows;
     private long lastTotalMs;
-    private string? lastQuerySql;
     private long lastGridTicks;
-    private string _debugMsg = "Aguardando eventos...";
-    private int _eventCount;
 
     private bool showModal = false;
     private bool isEditing = false;
@@ -246,41 +247,14 @@
 
     private void OnGridActionBegin(ActionEventArgs<Employee> args)
     {
-        _eventCount++;
-        _debugMsg = $"OnActionBegin: RequestType='{args.RequestType}' Cancel={args.Cancel}";
         perfTimer.Restart();
     }
 
     private async Task OnGridActionComplete(ActionEventArgs<Employee> args)
     {
-        _eventCount++;
-        _debugMsg = $"OnActionComplete: RequestType='{args.RequestType}' Ticks={perfTimer.ElapsedTicks}";
-
         perfTimer.Stop();
         lastGridTicks = perfTimer.ElapsedTicks;
         lastTotalMs = perfTimer.ElapsedMilliseconds;
-        lastQueryMs = lastTotalMs;
-        lastQueryRows = 15;
-
-        var fn = firstNameFilter ?? "";
-        var ln = lastNameFilter ?? "";
-        var filterWhere = "";
-        if (!string.IsNullOrWhiteSpace(fn) && !string.IsNullOrWhiteSpace(ln))
-            filterWhere = $"WHERE \"FirstName\" ILIKE '%{fn}%' AND \"LastName\" ILIKE '%{ln}%'";
-        else if (!string.IsNullOrWhiteSpace(fn))
-            filterWhere = $"WHERE \"FirstName\" ILIKE '%{fn}%'";
-        else if (!string.IsNullOrWhiteSpace(ln))
-            filterWhere = $"WHERE \"LastName\" ILIKE '%{ln}%'";
-
-        lastQuerySql = $@"WITH page_ids AS (
-    SELECT ""EmployeeID"" FROM ""Employees""
-    {filterWhere}
-    ORDER BY ""EmployeeID""
-    LIMIT 15 OFFSET {(grid.PageSettings.CurrentPage - 1) * 15}
-)
-SELECT e.* FROM ""Employees"" e
-INNER JOIN page_ids p ON e.""EmployeeID"" = p.""EmployeeID""
-ORDER BY e.""EmployeeID""";
 
         totalCount = grid.TotalItemCount;
         await InvokeAsync(StateHasChanged);

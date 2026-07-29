@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Syncfusion.Blazor;
 using Syncfusion.Blazor.Data;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ namespace QuickGridDemo.Components.Pages;
 public class Employees4Adaptor : DataAdaptor
 {
     private readonly IDbContextFactory<ApplicationDbContextPostgreSql> _dbContextFactory;
+    private readonly SqlCaptureService _sqlCapture;
 
     private List<Employee>? _lastPage;
     private int _lastTotalCount;
@@ -17,13 +19,21 @@ public class Employees4Adaptor : DataAdaptor
     private string? _lastFirstNameFilter;
     private string? _lastLastNameFilter;
 
-    public Employees4Adaptor(IDbContextFactory<ApplicationDbContextPostgreSql> dbContextFactory)
+    private int? _lastPageFirstId;
+    private int? _lastPageLastId;
+
+    public Employees4Adaptor(
+        IDbContextFactory<ApplicationDbContextPostgreSql> dbContextFactory,
+        SqlCaptureService sqlCapture)
     {
         _dbContextFactory = dbContextFactory;
+        _sqlCapture = sqlCapture;
     }
 
     public override async Task<object> ReadAsync(DataManagerRequest dm, string key = null)
     {
+        _sqlCapture.Reset();
+
         string firstNameFilter = null, lastNameFilter = null;
 
         if (dm.Params != null)
@@ -42,9 +52,12 @@ public class Employees4Adaptor : DataAdaptor
 
         if (samePage && dm.Sorted != null && dm.Sorted.Count > 0)
         {
+            _sqlCapture.Strategy = "cache-hit (re-sort in-memory)";
+            _sqlCapture.IdsQuerySql = $"-- Dados do cache (página {_lastSkip / _lastTake + 1}, {_lastPage!.Count} itens)";
+
             var sort = dm.Sorted.First();
             bool descending = IsDescending(sort.Direction);
-            var sorted = ApplySorting(_lastPage!, sort.Name, descending).ToList();
+            var sorted = ApplySorting(_lastPage, sort.Name, descending).ToList();
             return new DataResult { Result = sorted, Count = _lastTotalCount };
         }
 
@@ -62,17 +75,24 @@ public class Employees4Adaptor : DataAdaptor
         int skip = dm.Skip;
         int take = dm.Take > 0 ? dm.Take : 15;
 
-        var ids = await query
-            .OrderBy(e => e.EmployeeID)
-            .Select(e => e.EmployeeID)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync();
+        var sw = Stopwatch.StartNew();
+        var ids = await FetchIdsWithKeysetAsync(query, skip, take);
+        sw.Stop();
+        _sqlCapture.IdsQueryMs = sw.ElapsedMilliseconds;
+        _sqlCapture.IdsQueryRows = ids.Count;
 
-        var page = await context.Employees
+        var dataQuery = context.Employees
             .AsNoTracking()
             .Where(e => ids.Contains(e.EmployeeID))
-            .ToListAsync();
+            .OrderBy(e => e.EmployeeID);
+        _sqlCapture.DataQuerySql = dataQuery.ToQueryString();
+
+        sw.Restart();
+        var page = ids.Count == 0
+            ? new List<Employee>()
+            : await dataQuery.ToListAsync();
+        sw.Stop();
+        _sqlCapture.DataQueryMs = sw.ElapsedMilliseconds;
 
         if (dm.Sorted != null && dm.Sorted.Count > 0)
         {
@@ -87,10 +107,78 @@ public class Employees4Adaptor : DataAdaptor
         _lastTake = take;
         _lastFirstNameFilter = firstNameFilter;
         _lastLastNameFilter = lastNameFilter;
+        _lastPageFirstId = ids.Count > 0 ? ids[0] : null;
+        _lastPageLastId = ids.Count > 0 ? ids[^1] : null;
 
         return dm.RequiresCounts
             ? new DataResult { Result = page, Count = totalCount }
             : (object)page;
+    }
+
+    private async Task<List<int>> FetchIdsWithKeysetAsync(IQueryable<Employee> baseQuery, int skip, int take)
+    {
+        if (skip == 0)
+        {
+            var q = baseQuery
+                .OrderBy(e => e.EmployeeID)
+                .Select(e => e.EmployeeID)
+                .Take(take);
+            _sqlCapture.IdsQuerySql = q.ToQueryString();
+            _sqlCapture.Strategy = "page1 (LIMIT sem cursor)";
+            return await q.ToListAsync();
+        }
+
+        if (skip == _lastSkip + take && _lastPageLastId.HasValue)
+        {
+            var q = baseQuery
+                .Where(e => e.EmployeeID > _lastPageLastId.Value)
+                .OrderBy(e => e.EmployeeID)
+                .Select(e => e.EmployeeID)
+                .Take(take);
+            _sqlCapture.IdsQuerySql = q.ToQueryString();
+            _sqlCapture.Strategy = $"keyset-next (cursor > {_lastPageLastId.Value})";
+            return await q.ToListAsync();
+        }
+
+        if (skip == _lastSkip - take && _lastPageFirstId.HasValue)
+        {
+            var q = baseQuery
+                .Where(e => e.EmployeeID < _lastPageFirstId.Value)
+                .OrderByDescending(e => e.EmployeeID)
+                .Select(e => e.EmployeeID)
+                .Take(take);
+            _sqlCapture.IdsQuerySql = q.ToQueryString();
+            _sqlCapture.Strategy = $"keyset-prev (cursor < {_lastPageFirstId.Value})";
+
+            var ids = await q.ToListAsync();
+            ids.Reverse();
+            return ids;
+        }
+
+        var cursorQuery = baseQuery
+            .OrderBy(e => e.EmployeeID)
+            .Select(e => (int?)e.EmployeeID)
+            .Skip(skip - 1)
+            .Take(1);
+        _sqlCapture.CursorLookupSql = cursorQuery.ToQueryString();
+
+        var cursor = await cursorQuery.FirstOrDefaultAsync();
+
+        if (cursor == null)
+        {
+            _sqlCapture.Strategy = "cursor-lookup (vazio — página além do fim)";
+            return new List<int>();
+        }
+
+        var keysetQuery = baseQuery
+            .Where(e => e.EmployeeID > cursor.Value)
+            .OrderBy(e => e.EmployeeID)
+            .Select(e => e.EmployeeID)
+            .Take(take);
+        _sqlCapture.IdsQuerySql = keysetQuery.ToQueryString();
+        _sqlCapture.Strategy = $"cursor-lookup+keyset (cursor > {cursor.Value})";
+
+        return await keysetQuery.ToListAsync();
     }
 
     private static bool IsDescending(object direction)
