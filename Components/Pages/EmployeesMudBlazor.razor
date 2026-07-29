@@ -1,6 +1,6 @@
 @page "/employeesmudblazor"
 
-@using Microsoft.AspNetCore.Components.QuickGrid
+@using MudBlazor
 @using System.Diagnostics
 @using Microsoft.EntityFrameworkCore
 @using QuickGridDemo.Data
@@ -35,33 +35,24 @@
 </div>
 
 <div class="grid-scroll-container">
-<QuickGrid Items="employeesPage.AsQueryable()" Class="table table-striped table-bordered table-hover">
-    <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Class="width-treze-perc">
-        <ColumnOptions>
-            <div class="d-flex gap-1">
-                <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Nome..." autofocus />
-                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
-            </div>
-        </ColumnOptions>
-    </PropertyColumn>
-    <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true">
-        <ColumnOptions>
-            <div class="d-flex gap-1">
-                <input type="search" @bind="lastNameFilter" @bind:event="oninput" class="form-control" placeholder="Filtrar Sobrenome..." autofocus />
-                <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍</button>
-            </div>
-        </ColumnOptions>
-    </PropertyColumn>
-    <PropertyColumn Property="@(x => x.Title)" Title="Cargo"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.Country)" Title="País"></PropertyColumn>
-    <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone"></PropertyColumn>
-    <TemplateColumn Title="Ações" Class="width-dez-perc">
-        <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context)">Editar</button>
-        <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context)">Excluir</button>
-    </TemplateColumn>
-</QuickGrid>
+<MudDataGrid Items="employeesPage" Hover="true" Striped="true" Bordered="true"
+             SortMode="SortMode.Single" Dense="true">
+    <Columns>
+        <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true" />
+        <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" />
+        <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true" />
+        <PropertyColumn Property="@(x => x.Title)" Title="Cargo" />
+        <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true" />
+        <PropertyColumn Property="@(x => x.Country)" Title="País" />
+        <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone" />
+        <TemplateColumn Title="Ações">
+            <CellTemplate>
+                <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context.Item)">Editar</button>
+                <button class="btn btn-danger btn-sm" @onclick="() => RequestDelete(context.Item)">Excluir</button>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
 
 <!-- Paginador Deferred Join - INÍCIO -->
 <div class="d-flex justify-content-between align-items-center mt-2">
