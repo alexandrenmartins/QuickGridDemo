@@ -44,6 +44,7 @@
 
 <div class="grid-scroll-container">
 <SfGrid @ref="grid" TValue="Employee" AllowSorting="true" AllowPaging="true"
+        RowHeight="32"
         Query="@gridQuery">
     <GridEvents OnActionBegin="OnGridActionBegin" OnActionComplete="OnGridActionComplete" TValue="Employee" />
     <SfDataManager AdaptorInstance="@typeof(Employees4Adaptor)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
