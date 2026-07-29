@@ -38,16 +38,17 @@
 <MudDataGrid @ref="_dataGrid" T="Employee"
              ServerData="ServerReload"
              Hover="true" Striped="true" Bordered="true"
+             Filterable="true" FilterMode="DataGridFilterMode.ColumnFilterRow"
              SortMode="SortMode.Single" Dense="true"
              RowsPerPage="15">
     <Columns>
-        <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true" />
-        <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" />
-        <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true" />
-        <PropertyColumn Property="@(x => x.Title)" Title="Cargo" />
-        <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true" />
-        <PropertyColumn Property="@(x => x.Country)" Title="País" />
-        <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone" />
+        <PropertyColumn Property="@(x => x.EmployeeID)" Title="ID" Sortable="true" Filterable="true" />
+        <PropertyColumn Property="@(x => x.FirstName)" Title="Nome" Sortable="true" Filterable="true" />
+        <PropertyColumn Property="@(x => x.LastName)" Title="Sobrenome" Sortable="true" Filterable="true" />
+        <PropertyColumn Property="@(x => x.Title)" Title="Cargo" Filterable="true" />
+        <PropertyColumn Property="@(x => x.City)" Title="Cidade" Sortable="true" Filterable="true" />
+        <PropertyColumn Property="@(x => x.Country)" Title="País" Filterable="true" />
+        <PropertyColumn Property="@(x => x.HomePhone)" Title="Telefone" Filterable="true" />
         <TemplateColumn Title="Ações">
             <CellTemplate>
                 <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee(context.Item)">Editar</button>
@@ -211,8 +212,7 @@
 
     // Re-sort cache (evita refetch quando só o sort muda)
     private List<Employee>? _lastCachedPage;
-    private string? _lastFirstNameFilter;
-    private string? _lastLastNameFilter;
+    private string? _lastFilterHash;
 
     // Performance tracking
     private long lastIdsMs;
@@ -222,8 +222,6 @@
     private string? lastDataSql;
     private string? lastCursorLookupSql;
     private string? lastStrategy;
-
-    private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
 
     private bool showModal = false;
     private bool isEditing = false;
@@ -243,18 +241,28 @@
         totalCount = await context.Employees.CountAsync();
     }
 
+    private static string GetFilterHash(ICollection<IFilterDefinition<Employee>> filters)
+    {
+        if (filters == null || filters.Count == 0) return string.Empty;
+        var parts = filters
+            .Where(f => f.Operator is not null && f.Value is not null)
+            .OrderBy(f => f.Column?.PropertyName ?? f.Title)
+            .Select(f => $"{f.Column?.PropertyName ?? f.Title}|{f.Operator}|{f.Value}");
+        return string.Join("||", parts);
+    }
+
     private async Task<GridData<Employee>> ServerReload(GridState<Employee> state, CancellationToken ct)
     {
         int skip = state.Page * state.PageSize;
         int take = state.PageSize;
 
         var sortDef = state.SortDefinitions.FirstOrDefault();
+        var filterHash = GetFilterHash(state.FilterDefinitions);
 
         bool samePage = _lastCachedPage != null
             && skip == _lastSkip
             && take == _lastTake
-            && _lastFirstNameFilter == firstNameFilter
-            && _lastLastNameFilter == lastNameFilter;
+            && _lastFilterHash == filterHash;
 
         if (samePage && sortDef != null)
         {
@@ -274,7 +282,19 @@
         }
 
         using var context = DbContextFactory.CreateDbContext();
-        IQueryable<Employee> query = BuildFilteredQuery(context);
+        IQueryable<Employee> query = context.Employees
+            .AsNoTracking()
+            .OrderBy(e => e.EmployeeID);
+
+        foreach (var filter in state.FilterDefinitions)
+        {
+            if (filter.Operator is not null && filter.Value is not null)
+            {
+                var expr = FilterExpressionGenerator.GenerateExpression<Employee>(
+                    filter, new FilterOptions { FilterCaseSensitivity = DataGridFilterCaseSensitivity.Ignore });
+                query = query.Where(expr);
+            }
+        }
 
         filteredCount = await query.CountAsync();
         totalCount = filteredCount;
@@ -309,8 +329,7 @@
         _lastTake = take;
         _lastPageFirstId = ids.Count > 0 ? ids[0] : null;
         _lastPageLastId = ids.Count > 0 ? ids[^1] : null;
-        _lastFirstNameFilter = firstNameFilter;
-        _lastLastNameFilter = lastNameFilter;
+        _lastFilterHash = filterHash;
 
         await InvokeAsync(StateHasChanged);
 
@@ -418,26 +437,6 @@
                 : items.OrderBy(e => e.HomePhone).ToList(),
             _ => items
         };
-    }
-
-    private IQueryable<Employee> BuildFilteredQuery(ApplicationDbContextPostgreSql context)
-    {
-        IQueryable<Employee> query = context.Employees
-            .AsNoTracking()
-            .OrderBy(e => e.EmployeeID);
-
-        if (!string.IsNullOrWhiteSpace(firstNameFilter))
-            query = query.Where(e => e.FirstName.ToLower().Contains(firstNameFilter.ToLower()));
-
-        if (!string.IsNullOrWhiteSpace(lastNameFilter))
-            query = query.Where(e => e.LastName.ToLower().Contains(lastNameFilter.ToLower()));
-
-        return query;
-    }
-
-    private async Task ApplyFilters()
-    {
-        await _dataGrid.ReloadServerData();
     }
 
     private void OpenModal()
