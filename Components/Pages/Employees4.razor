@@ -1,0 +1,426 @@
+@page "/employees4"
+
+@using System.Diagnostics
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.Data
+@using Syncfusion.Blazor.Grids
+@using Microsoft.EntityFrameworkCore
+@using QuickGridDemo.Data
+@using QuickGridDemo.Models
+
+@inject IDbContextFactory<ApplicationDbContextPostgreSql> DbContextFactory
+@inject SqlCaptureService SqlCapture
+<PageTitle>QuickGridDemo - Funcionários 4</PageTitle>
+
+<!-- Toast de sucesso -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
+    @if (showToast)
+    {
+        <div class="toast show align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    @((MarkupString)toastMessage)
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="HideToast"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="mt-2 d-flex justify-content-between align-items-baseline">
+    <div class="d-flex align-items-center gap-3">
+        <h3><b>Funcionários 4</b> - Syncfusion DataGrid + PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
+        <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
+    </div>
+    <h5>Keyset Pagination + Deferred Join (CustomAdaptor) - 15 itens/página</h5>
+</div>
+
+<div class="mb-2 d-flex gap-2 align-items-center">
+    <input type="search" @bind="firstNameFilter" @bind:event="oninput" class="form-control form-control-sm" style="width: 200px;" placeholder="Filtrar Nome..." />
+    <input type="search" @bind="lastNameFilter" @bind:event="oninput" class="form-control form-control-sm" style="width: 200px;" placeholder="Filtrar Sobrenome..." />
+    <button class="btn btn-outline-secondary btn-sm" @onclick="ApplyFilters">🔍 Filtrar</button>
+</div>
+
+<div class="grid-scroll-container">
+<SfGrid @ref="grid" TValue="Employee" AllowSorting="true" AllowPaging="true"
+        RowHeight="32"
+        Query="@gridQuery">
+    <GridEvents OnActionBegin="OnGridActionBegin" OnActionComplete="OnGridActionComplete" TValue="Employee" />
+    <SfDataManager AdaptorInstance="@typeof(Employees4Adaptor)" Adaptor="Adaptors.CustomAdaptor"></SfDataManager>
+    <GridPageSettings PageSize="15"></GridPageSettings>
+    <GridColumns>
+        <GridColumn Field=@nameof(Employee.EmployeeID) HeaderText="ID" TextAlign="TextAlign.Right" Width="80"></GridColumn>
+        <GridColumn Field=@nameof(Employee.FirstName) HeaderText="Nome" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Employee.LastName) HeaderText="Sobrenome" Width="150"></GridColumn>
+        <GridColumn Field=@nameof(Employee.Title) HeaderText="Cargo" Width="130"></GridColumn>
+        <GridColumn Field=@nameof(Employee.City) HeaderText="Cidade" Width="120"></GridColumn>
+        <GridColumn Field=@nameof(Employee.Country) HeaderText="País" Width="100"></GridColumn>
+        <GridColumn Field=@nameof(Employee.HomePhone) HeaderText="Telefone" Width="130"></GridColumn>
+        <GridColumn Field=@nameof(Employee.HireDate) HeaderText="Admissão" Format="d" TextAlign="TextAlign.Center" Width="110"></GridColumn>
+        <GridColumn HeaderText="Ações" Width="150">
+            <Template>
+                <button class="btn btn-primary btn-sm" @onclick="() => EditEmployee((Employee)context)">Editar</button>
+                <button class="btn btn-danger btn-sm ms-1" @onclick="() => RequestDelete((Employee)context)">Excluir</button>
+            </Template>
+        </GridColumn>
+    </GridColumns>
+</SfGrid>
+</div>
+
+<!-- Performance Monitor -->
+<div class="mt-1 p-1 border rounded" style="font-size: 0.7rem; background-color: #f8f9fa;">
+    <b>Desempenho:</b>
+    IDs: @SqlCapture.IdsQueryMs ms (@SqlCapture.IdsQueryRows linhas) |
+    Dados: @SqlCapture.DataQueryMs ms |
+    Total: @lastTotalMs ms
+    @if (SqlCapture.Strategy == "cache-hit (re-sort in-memory)")
+    {
+        <span>| Dados do cache</span>
+    }
+</div>
+
+<!-- SQL Gerado -->
+<details class="mt-1">
+    <summary style="font-size: 0.7rem; cursor: pointer; color: #6c757d;">
+        SQL Gerado <span style="font-size: 0.6rem;">(@SqlCapture.Strategy)</span>
+    </summary>
+    <div class="mt-1 p-1" style="background-color: #e9ecef; border-radius: 3px;">
+        @if (SqlCapture.CursorLookupSql is not null)
+        {
+            <div style="font-size: 0.6rem; color: #495057; font-weight: 600;">Cursor Lookup:</div>
+            <pre style="max-height: 100px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.CursorLookupSql</pre>
+        }
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600; @(SqlCapture.CursorLookupSql is not null ? "margin-top: 4px;" : "")">IDs Query (Keyset):</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.IdsQuerySql</pre>
+        <div style="font-size: 0.6rem; color: #495057; font-weight: 600; margin-top: 4px;">Data Query (Deferred Join):</div>
+        <pre style="max-height: 150px; overflow: auto; font-size: 0.6rem; margin: 0; white-space: pre-wrap; background-color: #f8f9fa; padding: 4px; border-radius: 2px;">@SqlCapture.DataQuerySql</pre>
+    </div>
+</details>
+
+<!-- Modal de Cadastro/Edição -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditing ? "Editar Funcionário" : "Novo Funcionário")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="employeeModel" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" role="alert" />
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Nome <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="employeeModel.FirstName" />
+                                <ValidationMessage For="() => employeeModel.FirstName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sobrenome <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="employeeModel.LastName" />
+                                <ValidationMessage For="() => employeeModel.LastName" class="text-danger" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cargo</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Title" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tratamento</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.TitleOfCourtesy" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data Nascimento</label>
+                                <InputDate class="form-control" @bind-Value="employeeModel.BirthDate" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data Admissão</label>
+                                <InputDate class="form-control" @bind-Value="employeeModel.HireDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Endereço</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Address" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Cidade</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.City" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Região</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Region" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">CEP</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.PostalCode" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">País</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Country" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Telefone</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.HomePhone" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ramal</label>
+                                <InputText class="form-control" @bind-Value="employeeModel.Extension" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <InputTextArea class="form-control" @bind-Value="employeeModel.Notes" rows="3" />
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-3">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn @(isEditing ? "btn-success" : "btn-primary")">
+                                @(isEditing ? "Salvar" : "Cadastrar")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Deseja realmente excluir o funcionário <b>@employeeToDelete?.FirstName @employeeToDelete?.LastName</b>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    private SfGrid<Employee> grid = default!;
+    private Query gridQuery = new Query();
+    private int totalCount = 0;
+
+    private string firstNameFilter = string.Empty, lastNameFilter = string.Empty;
+
+    // Performance tracking via grid events
+    private Stopwatch perfTimer = new();
+    private long lastTotalMs;
+    private long lastGridTicks;
+
+    private bool showModal = false;
+    private bool isEditing = false;
+    private Employee? employeeToEdit;
+    private Employee employeeModel = new();
+
+    private bool showConfirmModal = false;
+    private Employee? employeeToDelete;
+
+    private bool showToast = false;
+    private string toastMessage = string.Empty;
+    private CancellationTokenSource? toastCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        totalCount = await context.Employees.CountAsync();
+    }
+
+    private async Task ApplyFilters()
+    {
+        gridQuery = new Query()
+            .AddParams("FirstNameFilter", firstNameFilter ?? "")
+            .AddParams("LastNameFilter", lastNameFilter ?? "");
+        await grid.Refresh();
+    }
+
+    private void OnGridActionBegin(ActionEventArgs<Employee> args)
+    {
+        perfTimer.Restart();
+    }
+
+    private async Task OnGridActionComplete(ActionEventArgs<Employee> args)
+    {
+        perfTimer.Stop();
+        lastGridTicks = perfTimer.ElapsedTicks;
+        lastTotalMs = perfTimer.ElapsedMilliseconds;
+
+        totalCount = grid.TotalItemCount;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenModal()
+    {
+        isEditing = false;
+        employeeToEdit = null;
+        employeeModel = new Employee();
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        isEditing = false;
+        employeeToEdit = null;
+        employeeModel = new Employee();
+    }
+
+    private void EditEmployee(Employee employee)
+    {
+        isEditing = true;
+        employeeToEdit = employee;
+        employeeModel = new Employee
+        {
+            EmployeeID = employee.EmployeeID,
+            FirstName = employee.FirstName,
+            LastName = employee.LastName,
+            Title = employee.Title,
+            TitleOfCourtesy = employee.TitleOfCourtesy,
+            BirthDate = employee.BirthDate,
+            HireDate = employee.HireDate,
+            Address = employee.Address,
+            City = employee.City,
+            Region = employee.Region,
+            PostalCode = employee.PostalCode,
+            Country = employee.Country,
+            HomePhone = employee.HomePhone,
+            Extension = employee.Extension,
+            Notes = employee.Notes
+        };
+        showModal = true;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isEditing)
+            await UpdateEmployee();
+        else
+            await AddEmployee();
+    }
+
+    private async Task AddEmployee()
+    {
+        using var context = DbContextFactory.CreateDbContext();
+        var newEmployee = new Employee
+        {
+            FirstName = employeeModel.FirstName,
+            LastName = employeeModel.LastName,
+            Title = employeeModel.Title,
+            TitleOfCourtesy = employeeModel.TitleOfCourtesy,
+            BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null,
+            HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null,
+            Address = employeeModel.Address,
+            City = employeeModel.City,
+            Region = employeeModel.Region,
+            PostalCode = employeeModel.PostalCode,
+            Country = employeeModel.Country,
+            HomePhone = employeeModel.HomePhone,
+            Extension = employeeModel.Extension,
+            Notes = employeeModel.Notes
+        };
+
+        context.Employees.Add(newEmployee);
+        await context.SaveChangesAsync();
+
+        CloseModal();
+        await grid.Refresh();
+        ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
+    }
+
+    private async Task UpdateEmployee()
+    {
+        if (employeeToEdit is not null)
+        {
+            using var context = DbContextFactory.CreateDbContext();
+            var existing = await context.Employees.FindAsync(employeeToEdit.EmployeeID);
+            if (existing is not null)
+            {
+                existing.FirstName = employeeModel.FirstName;
+                existing.LastName = employeeModel.LastName;
+                existing.Title = employeeModel.Title;
+                existing.TitleOfCourtesy = employeeModel.TitleOfCourtesy;
+                existing.BirthDate = employeeModel.BirthDate.HasValue ? employeeModel.BirthDate.Value.ToUniversalTime() : null;
+                existing.HireDate = employeeModel.HireDate.HasValue ? employeeModel.HireDate.Value.ToUniversalTime() : null;
+                existing.Address = employeeModel.Address;
+                existing.City = employeeModel.City;
+                existing.Region = employeeModel.Region;
+                existing.PostalCode = employeeModel.PostalCode;
+                existing.Country = employeeModel.Country;
+                existing.HomePhone = employeeModel.HomePhone;
+                existing.Extension = employeeModel.Extension;
+                existing.Notes = employeeModel.Notes;
+
+                await context.SaveChangesAsync();
+
+                CloseModal();
+                await grid.Refresh();
+                ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> alterado com sucesso!");
+            }
+        }
+    }
+
+    private void RequestDelete(Employee employee)
+    {
+        employeeToDelete = employee;
+        showConfirmModal = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (employeeToDelete is not null)
+        {
+            using var context = DbContextFactory.CreateDbContext();
+            var existing = await context.Employees.FindAsync(employeeToDelete.EmployeeID);
+            if (existing is not null)
+            {
+                context.Employees.Remove(existing);
+                await context.SaveChangesAsync();
+                ShowToast($"Funcionário <b>{existing.FirstName} {existing.LastName}</b> excluído com sucesso!");
+            }
+            await grid.Refresh();
+        }
+        showConfirmModal = false;
+        employeeToDelete = null;
+    }
+
+    private void CancelDelete()
+    {
+        showConfirmModal = false;
+        employeeToDelete = null;
+    }
+
+    private async void ShowToast(string message)
+    {
+        toastCts?.Cancel();
+        toastMessage = message;
+        showToast = true;
+        StateHasChanged();
+
+        toastCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(3000, toastCts.Token);
+            showToast = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void HideToast()
+    {
+        toastCts?.Cancel();
+        showToast = false;
+    }
+}
