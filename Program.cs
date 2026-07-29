@@ -4,6 +4,7 @@ using QuickGridDemo.Data;
 using Microsoft.EntityFrameworkCore;
 using Syncfusion.Blazor;
 using MudBlazor.Services;
+using MudBlazor;
 
 //Example from Code Skwela
 namespace QuickGridDemo
@@ -35,6 +36,7 @@ namespace QuickGridDemo
             builder.Services.AddHttpClient();
             builder.Services.AddSyncfusionBlazor();
             builder.Services.AddMudServices();
+            builder.Services.AddTransient<MudLocalizer, PtBrMudLocalizer>();
             builder.Services.AddScoped<Employees4Adaptor>();
             builder.Services.AddScoped<SqlCaptureService>();
 
