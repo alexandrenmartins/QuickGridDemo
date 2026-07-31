@@ -34,9 +34,19 @@
     <h5>Keyset Pagination + Deferred Join - 15 itens por página</h5>
 </div>
 
-<div class="grid-scroll-container">
+<div class="grid-scroll-container grid-keyboard-nav"
+     tabindex="0"
+     @ref="_gridContainerRef"
+     @onfocus="OnGridFocus"
+     @onblur="OnGridBlur"
+     @onkeydown="HandleGridKeyDown"
+     @onkeydown:preventDefault="_gridContainerFocused">
 <MudDataGrid @ref="_dataGrid" T="Employee"
              ServerData="ServerReload"
+             @bind-SelectedItem="_selectedEmployee"
+             RowClick="OnRowClick"
+             RowClassFunc="GetRowClass"
+             SelectOnRowClick="false"
              Hover="true" Striped="true" Bordered="true"
              Filterable="true" FilterMode="DataGridFilterMode.ColumnFilterRow"
              ColumnResizeMode="ResizeMode.Column"
@@ -240,6 +250,148 @@
     private string toastMessage = string.Empty;
     private CancellationTokenSource? toastCts;
 
+    // Keyboard navigation (setas ↑/↓, Home/End e Enter para editar)
+    private ElementReference _gridContainerRef;
+    private bool _gridContainerFocused;
+    private Employee? _selectedEmployee;
+    private int _selectedIndex = -1;
+    private List<Employee> _currentPageItems = new();
+    private SelectionTarget _pendingSelectionAfterLoad = SelectionTarget.None;
+
+    private enum SelectionTarget
+    {
+        None,
+        FirstRow,
+        LastRow
+    }
+
+    private void OnGridFocus()
+    {
+        _gridContainerFocused = true;
+        StateHasChanged();
+    }
+
+    private void OnGridBlur()
+    {
+        _gridContainerFocused = false;
+        StateHasChanged();
+    }
+
+    private string GetRowClass(Employee item, int index)
+    {
+        return _selectedEmployee is not null && item.EmployeeID == _selectedEmployee.EmployeeID
+            ? "mud-datagrid-row-selected"
+            : string.Empty;
+    }
+
+    private async Task OnRowClick(DataGridRowClickEventArgs<Employee> args)
+    {
+        _selectedEmployee = args.Item;
+        _selectedIndex = _currentPageItems.FindIndex(x => x.EmployeeID == args.Item.EmployeeID);
+        if (_selectedIndex < 0)
+            _selectedIndex = args.RowIndex;
+
+        await _gridContainerRef.FocusAsync();
+        StateHasChanged();
+    }
+
+    private void SyncSelectionIndex()
+    {
+        if (_selectedEmployee is null)
+        {
+            _selectedIndex = -1;
+            return;
+        }
+
+        _selectedIndex = _currentPageItems.FindIndex(x => x.EmployeeID == _selectedEmployee.EmployeeID);
+    }
+
+    private void ApplySelectionAfterLoad()
+    {
+        switch (_pendingSelectionAfterLoad)
+        {
+            case SelectionTarget.FirstRow:
+                _selectedIndex = _currentPageItems.Count > 0 ? 0 : -1;
+                _selectedEmployee = _selectedIndex >= 0 ? _currentPageItems[0] : null;
+                break;
+            case SelectionTarget.LastRow:
+                _selectedIndex = _currentPageItems.Count > 0 ? _currentPageItems.Count - 1 : -1;
+                _selectedEmployee = _selectedIndex >= 0 ? _currentPageItems[^1] : null;
+                break;
+            default:
+                if (_selectedEmployee is not null)
+                {
+                    _selectedIndex = _currentPageItems.FindIndex(x => x.EmployeeID == _selectedEmployee.EmployeeID);
+                    if (_selectedIndex < 0)
+                    {
+                        _selectedIndex = -1;
+                        _selectedEmployee = null;
+                    }
+                }
+                else
+                {
+                    _selectedIndex = -1;
+                }
+                break;
+        }
+
+        _pendingSelectionAfterLoad = SelectionTarget.None;
+    }
+
+    private async Task HandleGridKeyDown(KeyboardEventArgs e)
+    {
+        if (!_gridContainerFocused)
+            return;
+
+        if (_currentPageItems is null || _currentPageItems.Count == 0)
+            return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (_selectedIndex < _currentPageItems.Count - 1)
+                {
+                    _selectedIndex++;
+                    _selectedEmployee = _currentPageItems[_selectedIndex];
+                }
+                else if (_selectedIndex == _currentPageItems.Count - 1
+                         && (_dataGrid.CurrentPage + 1) * _dataGrid.RowsPerPage < _dataGrid.GetFilteredItemsCount())
+                {
+                    _pendingSelectionAfterLoad = SelectionTarget.FirstRow;
+                    _dataGrid.NavigateTo(Page.Next);
+                }
+                break;
+            case "ArrowUp":
+                if (_selectedIndex > 0)
+                {
+                    _selectedIndex--;
+                    _selectedEmployee = _currentPageItems[_selectedIndex];
+                }
+                else if (_selectedIndex == 0 && _dataGrid.CurrentPage > 0)
+                {
+                    _pendingSelectionAfterLoad = SelectionTarget.LastRow;
+                    _dataGrid.NavigateTo(Page.Previous);
+                }
+                break;
+            case "Home":
+                _selectedIndex = 0;
+                _selectedEmployee = _currentPageItems[0];
+                break;
+            case "End":
+                _selectedIndex = _currentPageItems.Count - 1;
+                _selectedEmployee = _currentPageItems[^1];
+                break;
+            case "Enter":
+                if (_selectedEmployee is not null)
+                    EditEmployee(_selectedEmployee);
+                break;
+            default:
+                return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         using var context = DbContextFactory.CreateDbContext();
@@ -280,6 +432,8 @@
             lastStrategy = "cache-hit (re-sort in-memory)";
 
             var cached = ApplySortingInMemory(new List<Employee>(_lastCachedPage!), sortDef);
+            _currentPageItems = new List<Employee>(cached);
+            SyncSelectionIndex();
 
             await InvokeAsync(StateHasChanged);
 
@@ -329,6 +483,9 @@
 
         if (sortDef != null)
             page = ApplySortingInMemory(page, sortDef);
+
+        _currentPageItems = new List<Employee>(page);
+        ApplySelectionAfterLoad();
 
         _lastSkip = skip;
         _lastTake = take;
