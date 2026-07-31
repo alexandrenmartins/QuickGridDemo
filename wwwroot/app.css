@@ -105,3 +105,10 @@ h1:focus {
     background-color: rgba(25, 118, 210, 0.22) !important;
 }
 
+.grid-keyboard-nav .mud-table-cell {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+

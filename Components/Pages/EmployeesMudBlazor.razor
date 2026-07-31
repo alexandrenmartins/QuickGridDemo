@@ -258,6 +258,11 @@
     private List<Employee> _currentPageItems = new();
     private SelectionTarget _pendingSelectionAfterLoad = SelectionTarget.None;
 
+    // Detecção de duplo clique na linha (editar)
+    private const int DoubleClickMaxIntervalMs = 400;
+    private Employee? _lastClickItem;
+    private DateTimeOffset _lastClickTime = DateTimeOffset.MinValue;
+
     private enum SelectionTarget
     {
         None,
@@ -292,6 +297,17 @@
             _selectedIndex = args.RowIndex;
 
         await _gridContainerRef.FocusAsync();
+
+        var now = DateTimeOffset.UtcNow;
+        bool isDoubleClick = _lastClickItem is not null
+            && _lastClickItem.EmployeeID == args.Item.EmployeeID
+            && (now - _lastClickTime).TotalMilliseconds <= DoubleClickMaxIntervalMs;
+        _lastClickItem = args.Item;
+        _lastClickTime = now;
+
+        if (isDoubleClick)
+            EditEmployee(args.Item);
+
         StateHasChanged();
     }
 
