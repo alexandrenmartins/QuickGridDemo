@@ -266,6 +266,10 @@
     private List<Employee> _currentPageItems = new();
     private SelectionTarget _pendingSelectionAfterLoad = SelectionTarget.None;
 
+    // Focar a primeira linha na abertura da página pelo menu (cada navegação recria a página)
+    private bool _isInitialLoad = true;
+    private bool _focusGridOnLoad;
+
     // Foco dos modais (mover foco para o modal ao abrir e voltar ao grid ao fechar)
     private ElementReference _modalDialogRef;
     private ElementReference _confirmDialogRef;
@@ -315,6 +319,12 @@
         {
             _returnFocusToGrid = false;
             await _gridContainerRef.FocusAsync();
+        }
+        if (_focusGridOnLoad)
+        {
+            _focusGridOnLoad = false;
+            if (_currentPageItems.Count > 0 && _gridContainerRef.Id != null)
+                await _gridContainerRef.FocusAsync();
         }
     }
 
@@ -541,6 +551,14 @@
             page = ApplySortingInMemory(page, sortDef);
 
         _currentPageItems = new List<Employee>(page);
+
+        if (_isInitialLoad)
+        {
+            _isInitialLoad = false;
+            _pendingSelectionAfterLoad = SelectionTarget.FirstRow;
+            _focusGridOnLoad = page.Count > 0;
+        }
+
         ApplySelectionAfterLoad();
 
         _lastSkip = skip;
