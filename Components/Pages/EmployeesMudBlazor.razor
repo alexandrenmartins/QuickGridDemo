@@ -2,7 +2,9 @@
 
 @using MudBlazor
 @using System.Diagnostics
+@using System.Linq.Expressions
 @using Microsoft.EntityFrameworkCore
+@using Npgsql.EntityFrameworkCore.PostgreSQL
 @using QuickGridDemo.Data
 @using QuickGridDemo.Models
 
@@ -485,6 +487,49 @@
         return string.Join("||", parts);
     }
 
+    // Constrói um predicado case-insensitive (ILIKE) para filtros de texto; retorna null para não-texto ou sem valor.
+    private static Expression<Func<Employee, bool>>? BuildIlikeFilter(IFilterDefinition<Employee> filter)
+    {
+        var op = filter.Operator;
+        var value = filter.Value?.ToString();
+        if (value is null)
+            return null;
+
+        string? pattern = op switch
+        {
+            FilterOperator.String.Contains => $"%{value}%",
+            FilterOperator.String.NotContains => $"%{value}%",
+            FilterOperator.String.StartsWith => $"{value}%",
+            FilterOperator.String.EndsWith => $"%{value}",
+            FilterOperator.String.Equal => value,
+            FilterOperator.String.NotEqual => value,
+            _ => null
+        };
+        if (pattern is null)
+            return null;
+
+        Expression<Func<Employee, bool>> expr = filter.Column?.PropertyName switch
+        {
+            nameof(Employee.FirstName) => e => EF.Functions.ILike(e.FirstName!, pattern),
+            nameof(Employee.LastName) => e => EF.Functions.ILike(e.LastName!, pattern),
+            nameof(Employee.Title) => e => EF.Functions.ILike(e.Title!, pattern),
+            nameof(Employee.City) => e => EF.Functions.ILike(e.City!, pattern),
+            nameof(Employee.Country) => e => EF.Functions.ILike(e.Country!, pattern),
+            nameof(Employee.HomePhone) => e => EF.Functions.ILike(e.HomePhone!, pattern),
+            _ => null!
+        };
+        if (expr is null)
+            return null;
+
+        if (op is FilterOperator.String.NotContains or FilterOperator.String.NotEqual)
+        {
+            var negated = Expression.Not(expr.Body);
+            return Expression.Lambda<Func<Employee, bool>>(negated, expr.Parameters);
+        }
+
+        return expr;
+    }
+
     // Provedor de dados do MudDataGrid: aplica filtros, busca a página via keyset/deferred join e retorna o resultado.
     private async Task<GridData<Employee>> ServerReload(GridState<Employee> state, CancellationToken ct)
     {
@@ -525,7 +570,18 @@
 
         foreach (var filter in state.FilterDefinitions)
         {
-            if (filter.Operator is not null && filter.Value is not null)
+            if (filter.Operator is null)
+                continue;
+
+            // Filtros de texto usam ILIKE (case-insensitive); demais (números, empty/not empty) usam o gerador padrão.
+            var ilikeExpr = BuildIlikeFilter(filter);
+            if (ilikeExpr is not null)
+            {
+                query = query.Where(ilikeExpr);
+                continue;
+            }
+
+            if (filter.Value is not null)
             {
                 var expr = FilterExpressionGenerator.GenerateExpression<Employee>(
                     filter, new FilterOptions { FilterCaseSensitivity = DataGridFilterCaseSensitivity.Ignore });
