@@ -91,3 +91,24 @@ h1:focus {
     color: rgba(0, 0, 0, 0.38) !important;
 }
 
+.grid-keyboard-nav {
+    outline: none;
+}
+
+.mud-datagrid-row-selected,
+.mud-datagrid-row-selected .mud-table-cell {
+    background-color: rgba(25, 118, 210, 0.15) !important;
+}
+
+.grid-keyboard-nav:focus .mud-datagrid-row-selected,
+.grid-keyboard-nav:focus .mud-datagrid-row-selected .mud-table-cell {
+    background-color: rgba(25, 118, 210, 0.22) !important;
+}
+
+.grid-keyboard-nav .mud-table-cell {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
