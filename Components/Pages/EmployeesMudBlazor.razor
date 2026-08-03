@@ -30,6 +30,12 @@
     <div class="d-flex align-items-center gap-3">
         <h3><b>Funcionários</b> - Banco de Dados PostgreSQL <span class="badge bg-secondary" style="font-size: 0.50em;">Total: @totalCount</span></h3>
         <button class="btn btn-primary btn-sm" @onclick="OpenModal">Novo Funcionário</button>
+        <MudTooltip Text="@(_showFilterRow ? "Ocultar linha de filtros" : "Mostrar linha de filtros")">
+            <MudIconButton Icon="@(_showFilterRow ? Icons.Material.Filled.FilterAlt : Icons.Material.Filled.FilterAltOff)"
+                           Color="@(_showFilterRow ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           @onclick="ToggleFilterRow" />
+        </MudTooltip>
     </div>
     <h5>Keyset Pagination + Deferred Join - 15 itens por página</h5>
 </div>
@@ -48,7 +54,7 @@
              RowClassFunc="GetRowClass"
              SelectOnRowClick="false"
              Hover="true" Striped="true" Bordered="true"
-             Filterable="true" FilterMode="DataGridFilterMode.ColumnFilterRow"
+             Filterable="@_showFilterRow" FilterMode="DataGridFilterMode.ColumnFilterRow"
              ColumnResizeMode="ResizeMode.Column"
              SortMode="SortMode.Single" Dense="true"
              RowsPerPage="15">
@@ -249,6 +255,8 @@
     private bool showToast = false;
     private string toastMessage = string.Empty;
     private CancellationTokenSource? toastCts;
+
+    private bool _showFilterRow = true;
 
     // Keyboard navigation (setas ↑/↓, Home/End e Enter para editar)
     private ElementReference _gridContainerRef;
@@ -634,6 +642,14 @@
         employeeToEdit = null;
         employeeModel = new Employee();
         showModal = true;
+    }
+
+    private async Task ToggleFilterRow()
+    {
+        _showFilterRow = !_showFilterRow;
+        if (!_showFilterRow)
+            await _dataGrid.ClearFiltersAsync();
+        StateHasChanged();
     }
 
     private void CloseModal()
