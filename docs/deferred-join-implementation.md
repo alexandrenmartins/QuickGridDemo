@@ -140,3 +140,13 @@ private async Task GoToPageAsync(int pageNumber)
 ## Arquivo Relacionado
 
 - `Components/Pages/Employees.razor` - Implementação completa
+
+## Employees3.razor — CTE + Keyset + Deferred Join
+
+- CTE: usa SQL cru com WITH:
+- WITH page_ids AS (SELECT "EmployeeID" ...) em LoadPageAsync (Employees3.razor:341)
+- WITH last_page_ids AS (... OFFSET ...) em GoToLastPageAsync (Employees3.razor:419)
+- Keyset Pagination: cursor WHERE "EmployeeID" > {cursor} (Employees3.razor:343), currentCursorId + pilha cursorHistory (linhas 252-255, 383-386)
+- Deferred Join: INNER JOIN page_ids p ON e."EmployeeID" = p."EmployeeID" (Employees3.razor:348) — os IDs são selecionados na CTE e as linhas completas buscadas só para eles, tudo numa única query (FromSqlRaw)
+
+
