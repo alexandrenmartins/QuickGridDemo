@@ -288,12 +288,14 @@
         LastRow
     }
 
+    // Marca o container do grid como focado ao receber o foco (habilita a navegação por teclado).
     private void OnGridFocus()
     {
         _gridContainerFocused = true;
         StateHasChanged();
     }
 
+    // Fecha o modal aberto (cadastro/edição ou confirmação de exclusão) quando a tecla ESC é pressionada.
     private void OnModalKeyDown(KeyboardEventArgs e)
     {
         if (e.Key != "Escape") return;
@@ -301,12 +303,14 @@
         else if (showConfirmModal) CancelDelete();
     }
 
+    // Marca o container do grid como não focado ao perder o foco (desabilita a navegação por teclado).
     private void OnGridBlur()
     {
         _gridContainerFocused = false;
         StateHasChanged();
     }
 
+    // Gerencia o foco após cada renderização: foca o modal ao abrir, devolve o foco ao grid ao fechar e foca o grid na primeira carga.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusModalAfterRender)
@@ -328,6 +332,7 @@
         }
     }
 
+    // Retorna a classe CSS da linha (destaca a linha selecionada na grid).
     private string GetRowClass(Employee item, int index)
     {
         return _selectedEmployee is not null && item.EmployeeID == _selectedEmployee.EmployeeID
@@ -335,6 +340,7 @@
             : string.Empty;
     }
 
+    // Seleciona o funcionário clicado, move o foco para o grid e detecta duplo clique para abrir a edição.
     private async Task OnRowClick(DataGridRowClickEventArgs<Employee> args)
     {
         _selectedEmployee = args.Item;
@@ -357,6 +363,7 @@
         StateHasChanged();
     }
 
+    // Sincroniza o índice da seleção com a página atual (mantém a posição da linha selecionada após re-sort/cache).
     private void SyncSelectionIndex()
     {
         if (_selectedEmployee is null)
@@ -368,6 +375,7 @@
         _selectedIndex = _currentPageItems.FindIndex(x => x.EmployeeID == _selectedEmployee.EmployeeID);
     }
 
+    // Aplica a seleção pendente após o carregamento dos dados (primeira/última linha ou manutenção da seleção atual).
     private void ApplySelectionAfterLoad()
     {
         switch (_pendingSelectionAfterLoad)
@@ -400,6 +408,7 @@
         _pendingSelectionAfterLoad = SelectionTarget.None;
     }
 
+    // Navegação por teclado no grid: setas ↑/↓, Home/End, Enter (editar linha) e ESC (fechar modal).
     private async Task HandleGridKeyDown(KeyboardEventArgs e)
     {
         if (!_gridContainerFocused)
@@ -458,12 +467,14 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    // Carrega o total de funcionários do banco ao inicializar a página (exibido no cabeçalho).
     protected override async Task OnInitializedAsync()
     {
         using var context = DbContextFactory.CreateDbContext();
         totalCount = await context.Employees.CountAsync();
     }
 
+    // Gera um hash dos filtros ativos para detectar mudanças e invalidar o cache de re-sort.
     private static string GetFilterHash(ICollection<IFilterDefinition<Employee>> filters)
     {
         if (filters == null || filters.Count == 0) return string.Empty;
@@ -474,6 +485,7 @@
         return string.Join("||", parts);
     }
 
+    // Provedor de dados do MudDataGrid: aplica filtros, busca a página via keyset/deferred join e retorna o resultado.
     private async Task<GridData<Employee>> ServerReload(GridState<Employee> state, CancellationToken ct)
     {
         int skip = state.Page * state.PageSize;
@@ -576,6 +588,7 @@
         };
     }
 
+    // Busca apenas os IDs da página usando paginação keyset (com cursor), otimizando o offset em páginas profundas.
     private async Task<List<int>> FetchIdsWithKeysetAsync(IQueryable<Employee> baseQuery, int skip, int take)
     {
         if (skip == 0)
@@ -645,6 +658,7 @@
         return await keysetQuery.ToListAsync();
     }
 
+    // Reordena a página atual em memória conforme a coluna de ordenação escolhida (evita refetch dos dados).
     private static List<Employee> ApplySortingInMemory(List<Employee> items, SortDefinition<Employee> sortDef)
     {
         bool desc = sortDef.Descending;
@@ -675,6 +689,7 @@
         };
     }
 
+    // Abre o modal de cadastro com um novo funcionário em branco.
     private void OpenModal()
     {
         isEditing = false;
@@ -684,6 +699,7 @@
         _focusModalAfterRender = true;
     }
 
+    // Mostra/oculta a linha de filtros e limpa os filtros aplicados ao ocultar.
     private async Task ToggleFilterRow()
     {
         _showFilterRow = !_showFilterRow;
@@ -692,6 +708,7 @@
         StateHasChanged();
     }
 
+    // Fecha o modal de cadastro/edição e devolve o foco ao grid.
     private void CloseModal()
     {
         showModal = false;
@@ -701,6 +718,7 @@
         _returnFocusToGrid = true;
     }
 
+    // Abre o modal de edição preenchido com os dados do funcionário selecionado.
     private void EditEmployee(Employee employee)
     {
         isEditing = true;
@@ -727,6 +745,7 @@
         _focusModalAfterRender = true;
     }
 
+    // Encaminha o submit válido do formulário para adicionar ou atualizar o funcionário.
     private async Task HandleValidSubmit()
     {
         if (isEditing)
@@ -735,6 +754,7 @@
             await AddEmployee();
     }
 
+    // Insere um novo funcionário no banco e recarrega os dados da grid.
     private async Task AddEmployee()
     {
         using var context = DbContextFactory.CreateDbContext();
@@ -765,6 +785,7 @@
         ShowToast($"Funcionário <b>{newEmployee.FirstName} {newEmployee.LastName}</b> cadastrado com sucesso!");
     }
 
+    // Atualiza os dados do funcionário em edição no banco e recarrega a grid.
     private async Task UpdateEmployee()
     {
         if (employeeToEdit is not null)
@@ -797,6 +818,7 @@
         }
     }
 
+    // Exibe o modal de confirmação de exclusão do funcionário.
     private void RequestDelete(Employee employee)
     {
         employeeToDelete = employee;
@@ -804,6 +826,7 @@
         _focusModalAfterRender = true;
     }
 
+    // Exclui o funcionário confirmado do banco e recarrega a grid.
     private async Task ConfirmDelete()
     {
         if (employeeToDelete is not null)
@@ -827,6 +850,7 @@
         _returnFocusToGrid = true;
     }
 
+    // Fecha o modal de confirmação sem excluir e devolve o foco ao grid.
     private void CancelDelete()
     {
         showConfirmModal = false;
@@ -834,6 +858,7 @@
         _returnFocusToGrid = true;
     }
 
+    // Exibe uma mensagem de sucesso (toast) temporária no canto superior direito.
     private async void ShowToast(string message)
     {
         toastCts?.Cancel();
@@ -851,6 +876,7 @@
         catch (TaskCanceledException) { }
     }
 
+    // Oculta a mensagem de toast imediatamente.
     private void HideToast()
     {
         toastCts?.Cancel();
