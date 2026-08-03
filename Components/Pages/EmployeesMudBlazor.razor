@@ -113,7 +113,7 @@
 @if (showModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" @onkeydown="OnModalKeyDown">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered" tabindex="-1" @ref="_modalDialogRef">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">@(isEditing ? "Editar Funcionário" : "Novo Funcionário")</h5>
@@ -201,7 +201,7 @@
 @if (showConfirmModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" @onkeydown="OnModalKeyDown">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered" tabindex="-1" @ref="_confirmDialogRef">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Confirmar Exclusão</h5>
@@ -266,6 +266,12 @@
     private List<Employee> _currentPageItems = new();
     private SelectionTarget _pendingSelectionAfterLoad = SelectionTarget.None;
 
+    // Foco dos modais (mover foco para o modal ao abrir e voltar ao grid ao fechar)
+    private ElementReference _modalDialogRef;
+    private ElementReference _confirmDialogRef;
+    private bool _focusModalAfterRender;
+    private bool _returnFocusToGrid;
+
     // Detecção de duplo clique na linha (editar)
     private const int DoubleClickMaxIntervalMs = 400;
     private Employee? _lastClickItem;
@@ -295,6 +301,21 @@
     {
         _gridContainerFocused = false;
         StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusModalAfterRender)
+        {
+            _focusModalAfterRender = false;
+            if (showModal) await _modalDialogRef.FocusAsync();
+            else if (showConfirmModal) await _confirmDialogRef.FocusAsync();
+        }
+        if (_returnFocusToGrid)
+        {
+            _returnFocusToGrid = false;
+            await _gridContainerRef.FocusAsync();
+        }
     }
 
     private string GetRowClass(Employee item, int index)
@@ -642,6 +663,7 @@
         employeeToEdit = null;
         employeeModel = new Employee();
         showModal = true;
+        _focusModalAfterRender = true;
     }
 
     private async Task ToggleFilterRow()
@@ -658,6 +680,7 @@
         isEditing = false;
         employeeToEdit = null;
         employeeModel = new Employee();
+        _returnFocusToGrid = true;
     }
 
     private void EditEmployee(Employee employee)
@@ -683,6 +706,7 @@
             Notes = employee.Notes
         };
         showModal = true;
+        _focusModalAfterRender = true;
     }
 
     private async Task HandleValidSubmit()
@@ -759,6 +783,7 @@
     {
         employeeToDelete = employee;
         showConfirmModal = true;
+        _focusModalAfterRender = true;
     }
 
     private async Task ConfirmDelete()
@@ -781,12 +806,14 @@
 
         showConfirmModal = false;
         employeeToDelete = null;
+        _returnFocusToGrid = true;
     }
 
     private void CancelDelete()
     {
         showConfirmModal = false;
         employeeToDelete = null;
+        _returnFocusToGrid = true;
     }
 
     private async void ShowToast(string message)

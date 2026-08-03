@@ -95,6 +95,10 @@ h1:focus {
     outline: none;
 }
 
+.modal-dialog:focus {
+    outline: none;
+}
+
 .mud-datagrid-row-selected,
 .mud-datagrid-row-selected .mud-table-cell {
     background-color: rgba(25, 118, 210, 0.15) !important;
