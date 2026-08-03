@@ -106,7 +106,7 @@
 <!-- Modal de Cadastro/Edição -->
 @if (showModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" @onkeydown="OnModalKeyDown">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -194,7 +194,7 @@
 <!-- Modal de Confirmação de Exclusão -->
 @if (showConfirmModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" @onkeydown="OnModalKeyDown">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -274,6 +274,13 @@
     {
         _gridContainerFocused = true;
         StateHasChanged();
+    }
+
+    private void OnModalKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        if (showModal) CloseModal();
+        else if (showConfirmModal) CancelDelete();
     }
 
     private void OnGridBlur()
@@ -400,6 +407,10 @@
             case "Enter":
                 if (_selectedEmployee is not null)
                     EditEmployee(_selectedEmployee);
+                break;
+            case "Escape":
+                if (showModal) CloseModal();
+                else if (showConfirmModal) CancelDelete();
                 break;
             default:
                 return;
